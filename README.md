@@ -4,6 +4,7 @@ The library is HTTP client to [Elastic Search](https://www.elastic.co/products/e
 
 The project is under development.
 
+[![Build Status](https://secure.travis-ci.org/zalando/esio.svg?branch=master)](http://travis-ci.org/zalando/esio)
 
 ## inspiration
 
