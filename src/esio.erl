@@ -16,13 +16,15 @@
    close/1,
    put/3, put/4, put_/3, put_/4,
    get/2, get/3, get_/2, get_/3,
-   remove/2, remove/3, remove_/2, remove_/3
+   remove/2, remove/3, remove_/2, remove_/3,
+   lookup/2, lookup/3, lookup/4, lookup_/2, lookup_/3, lookup_/4
 ]).
 
 %%
 %% data types
 -type key()  :: uri:urn().
 -type val()  :: map().
+-type req()  :: map().
 -type sock() :: pid().
 
 
@@ -95,7 +97,7 @@ get(Sock, Key, Timeout) ->
 -spec get_(sock(), key(), boolean()) -> ok | reference().
 
 get_(Sock, Key) ->
-   get_(Sock, Key, false).
+   get_(Sock, Key, true).
 
 get_(Sock, Key, Flag) ->
    req_(Sock, {get, uri:new(Key)}, Flag).
@@ -123,6 +125,38 @@ remove_(Sock, Key) ->
 
 remove_(Sock, Key, Flag) ->
    req_(Sock, {remove, uri:new(Key)}, Flag).
+
+
+%%
+%% synchronous lookup (execute elastic search query)
+-spec lookup(sock(), req()) -> {ok, val()} | {error, _}.
+-spec lookup(sock(), key(), req()) -> {ok, val()} | {error, _}.
+-spec lookup(sock(), key(), req(), timeout()) -> {ok, val()} | {error, _}.
+
+lookup(Sock, Query) ->
+   lookup(Sock, {urn, <<"esio">>, <<"*">>}, Query).
+
+lookup(Sock, Uid, Query) ->
+   lookup(Sock, Uid, Query, ?TIMEOUT).
+
+lookup(Sock, Uid, Query, Timeout) ->
+   req(Sock, {lookup, uri:new(Uid), jsx:encode(Query)}, Timeout).
+
+%%
+%% asynchronous lookup
+-spec lookup_(sock(), req()) -> ok | reference().
+-spec lookup_(sock(), key(), req()) -> ok | reference().
+-spec lookup_(sock(), key(), req(), boolean()) -> ok | reference().
+
+lookup_(Sock, Query) ->
+   lookup_(Sock, {urn, <<"esio">>, <<"*">>}, Query).
+
+lookup_(Sock, Uid, Query) ->
+   lookup_(Sock, Uid, Query, true).
+
+lookup_(Sock, Uid, Query, Flag) ->
+   req_(Sock, {lookup, uri:new(Uid), jsx:encode(Query)}, Flag).
+   
 
 
 %%-----------------------------------------------------------------------------
