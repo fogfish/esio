@@ -1,0 +1,9 @@
+*.sublime-*
+*.tgz
+*.bundle
+deps/
+log/
+ebin/
+.rebar/
+rebar
+
