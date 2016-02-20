@@ -16,7 +16,7 @@
   ,init_per_group/2 ,end_per_group/2
 ]).
 -export([
-   put/1, get/1, remove/1
+   put/1, get/1, remove/1, lookup/1
 ]).
 
 %%%----------------------------------------------------------------------------   
@@ -33,7 +33,7 @@ all() ->
 groups() ->
    [
       {keyval, [parallel], [
-         put, get, remove
+         put, get, remove, lookup
       ]}
    ].
 
@@ -125,6 +125,14 @@ remove(Config) ->
       esio:remove_(Sock, Key3, true)
    ),
    {error, not_found} = esio:get(Sock, Key3),
+
+   esio:close(Sock).
+
+lookup(Config) ->
+   {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
+   Urn = ?config(base, Config),
+
+   {ok, _} = esio:lookup(Sock, Urn, #{'query' => #{'match_all' => #{}} }),
 
    esio:close(Sock).
 

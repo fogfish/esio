@@ -68,6 +68,12 @@ handle({remove, _} = Remove, Pipe, #{sock := Sock, uri := Uri, req := Req} = Sta
       State#{req := deq:enq(#{type => remove, pipe => Pipe}, Req)}
    };
 
+handle({lookup, _, _} = Lookup, Pipe, #{sock := Sock, uri := Uri, req := Req} = State) ->
+   request(Sock, build_http_req(Uri, Lookup)),
+   {next_state, handle, 
+      State#{req := deq:enq(#{type => lookup, pipe => Pipe}, Req)}
+   };
+
 %%
 %% socket is terminated 
 handle({sidedown, b, normal}, _, #{uri := Uri, opts := Opts} = State) ->
@@ -130,8 +136,7 @@ response(#{type := put, code := Code, pipe := Pipe})
 response(#{type := put, code := Code, pipe := Pipe}) ->
    pipe:a(Pipe, {error, Code});
 
-response(#{type := get, code := Code, pipe := Pipe, json := Json})
- when Code =:= 200 ->
+response(#{type := get, code :=  200, pipe := Pipe, json := Json}) ->
    Val = jsx:decode(
       erlang:iolist_to_binary(
          lists:reverse(Json)
@@ -151,7 +156,20 @@ response(#{type := remove, code := Code, pipe := Pipe})
    pipe:a(Pipe, ok);
 
 response(#{type := remove, code := Code, pipe := Pipe}) ->
+   pipe:a(Pipe, {error, Code});
+
+response(#{type := lookup, code :=  200, pipe := Pipe, json := Json}) ->
+   Val = jsx:decode(
+      erlang:iolist_to_binary(
+         lists:reverse(Json)
+      ),
+      [return_maps]
+   ),
+   pipe:a(Pipe, {ok, maps:get(<<"hits">>, Val)});
+
+response(#{type := lookup, code := Code, pipe := Pipe}) ->
    pipe:a(Pipe, {error, Code}).
+
 
 
 
@@ -161,7 +179,7 @@ build_http_req(Uri, {put, Key, Val}) ->
    [
       {
          'PUT',
-         urn_to_http_path(Uri, Key),
+         urn_to_cask(Uri, Key),
          [
             {'Content-Type',  {application, json}},
             {'Transfer-Encoding', <<"chunked">>},
@@ -176,7 +194,7 @@ build_http_req(Uri, {get, Key}) ->
    [
       {
          'GET',
-         urn_to_http_path(Uri, Key),
+         urn_to_cask(Uri, Key),
          [
             {'Accept',  'application/json'},
             {'Connection',    'keep-alive'}
@@ -189,27 +207,58 @@ build_http_req(Uri, {remove, Key}) ->
    [
       {
          'DELETE',
-         urn_to_http_path(Uri, Key),
+         urn_to_cask(Uri, Key),
          [
             {'Accept',  'application/json'},
             {'Connection',    'keep-alive'}
          ]
       },
       eof
+   ];
+
+build_http_req(Uri, {lookup, Uid, Query}) ->
+   [
+      {
+         'POST',
+         urn_to_search(Uri, Uid),
+         [
+            {'Content-Type',  {application, json}},
+            {'Transfer-Encoding', <<"chunked">>},
+            {'Connection',     'keep-alive'}
+         ]
+      },
+      Query,
+      eof
    ].
 
-%%
-%%
-urn_to_http_path(Uri, {urn, _, _} = Key) ->
-   urn_to_http_path(Uri, uri:segments(Key));
 
-urn_to_http_path(Uri, [_Cask, _Type, _Key] = List) ->
+%%
+%%
+urn_to_cask(Uri, {urn, _, _} = Key) ->
+   urn_to_cask(Uri, uri:segments(Key));
+
+urn_to_cask(Uri, [_Cask, _Type, _Key] = List) ->
    uri:segments(List, Uri);
 
-urn_to_http_path(Uri, [Cask, Key]) ->
+urn_to_cask(Uri, [Cask, Key]) ->
    uri:segments([Cask, <<"default">>, Key], Uri).
 
+%%
+%%
+urn_to_search(Uri, {urn, _, _} = Key) ->
+   urn_to_search(Uri, uri:segments(Key));
 
+urn_to_search(Uri, []) ->
+   uri:segments([<<"_search">>], Uri);
+
+urn_to_search(Uri, [<<"*">>]) ->
+   uri:segments([<<"_search">>], Uri);
+
+urn_to_search(Uri, [Cask]) ->
+   uri:segments([Cask, <<"_search">>], Uri);
+
+urn_to_search(Uri, [Cask, Type | _]) ->
+   uri:segments([Cask, Type, <<"_search">>], Uri).
 
       
 
