@@ -217,6 +217,7 @@ build_http_req(Uri, {remove, Key}) ->
    ];
 
 build_http_req(Uri, {lookup, Uid, Query}) ->
+   io:format("==> ~s~n", [Query]),
    [
       {
          'POST',
