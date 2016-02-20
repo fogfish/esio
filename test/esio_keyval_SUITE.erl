@@ -18,6 +18,9 @@
 -export([
    put/1, get/1, remove/1, lookup/1
 ]).
+-export([
+   stream/1
+]).
 
 %%%----------------------------------------------------------------------------   
 %%%
@@ -27,13 +30,17 @@
 
 all() ->
    [
-      {group, keyval}
+      {group, keyval},
+      {group, stream}
    ].
 
 groups() ->
    [
       {keyval, [parallel], [
          put, get, remove, lookup
+      ]},
+      {stream, [parallel], [
+         stream
       ]}
    ].
 
@@ -136,6 +143,15 @@ lookup(Config) ->
 
    esio:close(Sock).
 
+
+stream(Config) ->
+   {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
+   Urn = ?config(base, Config),
+
+   Stream  = esio:stream(Sock, Urn, #{'query' => #{'match_all' => #{}} }),
+   [_ | _] = stream:list(Stream),
+
+   esio:close(Sock).
 
 
 %%%----------------------------------------------------------------------------   

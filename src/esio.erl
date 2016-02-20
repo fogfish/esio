@@ -17,7 +17,8 @@
    put/3, put/4, put_/3, put_/4,
    get/2, get/3, get_/2, get_/3,
    remove/2, remove/3, remove_/2, remove_/3,
-   lookup/2, lookup/3, lookup/4, lookup_/2, lookup_/3, lookup_/4
+   lookup/2, lookup/3, lookup/4, lookup_/2, lookup_/3, lookup_/4,
+   stream/2, stream/3
 ]).
 
 %%
@@ -134,7 +135,7 @@ remove_(Sock, Key, Flag) ->
 -spec lookup(sock(), key(), req(), timeout()) -> {ok, val()} | {error, _}.
 
 lookup(Sock, Query) ->
-   lookup(Sock, {urn, <<"esio">>, <<"*">>}, Query).
+   lookup(Sock, ?WILDCARD, Query).
 
 lookup(Sock, Uid, Query) ->
    lookup(Sock, Uid, Query, ?TIMEOUT).
@@ -149,7 +150,7 @@ lookup(Sock, Uid, Query, Timeout) ->
 -spec lookup_(sock(), key(), req(), boolean()) -> ok | reference().
 
 lookup_(Sock, Query) ->
-   lookup_(Sock, {urn, <<"esio">>, <<"*">>}, Query).
+   lookup_(Sock, ?WILDCARD, Query).
 
 lookup_(Sock, Uid, Query) ->
    lookup_(Sock, Uid, Query, true).
@@ -157,6 +158,17 @@ lookup_(Sock, Uid, Query) ->
 lookup_(Sock, Uid, Query, Flag) ->
    req_(Sock, {lookup, uri:new(Uid), jsx:encode(Query)}, Flag).
    
+
+%%
+%% return data stream corresponding to query
+-spec stream(sock(), req()) -> datum:stream(). 
+-spec stream(sock(), key(), req()) -> datum:stream(). 
+
+stream(Sock, Query) ->
+   stream(Sock, ?WILDCARD, Query).
+
+stream(Sock, Uid, Query) ->
+   esio_stream:new(Sock, Uid, Query).
 
 
 %%-----------------------------------------------------------------------------

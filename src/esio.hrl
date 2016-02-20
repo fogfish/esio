@@ -8,3 +8,11 @@
 %%
 %% default i/o timeout
 -define(TIMEOUT, 5000).
+
+%%
+%% wild-card urn, matches any indexes
+-define(WILDCARD,  {urn, <<"esio">>, <<"*">>}).
+
+%%
+%% number of elements to read
+-define(CONFIG_STREAM_CHUNK,  100).
