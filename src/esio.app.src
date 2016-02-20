@@ -7,6 +7,7 @@
       {applications,[
          kernel
         ,stdlib
+        ,knet
       ]},
       {mod, {esio_app, []}},
       {env, []}

@@ -8,8 +8,8 @@ The project is under development.
 ## inspiration
 
 Elastic Search provides "sophisticated [RESTful API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs.html)". This library implements data access layer for Erlang applications and makes data and object semantic friendly to Erlang. Unlike other approach, this library do not aim to provide generic HTTP-proxy approach, it solves the following aspects 
-* identity crisis through urn-base schema; it resolve hierarchical nature of Elastic Search indexes.
-* complexity of DSL offering query templates
+* identity crisis through urn-base schema; it resolve hierarchical nature of index / type / key notation.
+* complexity of DSL by offering query templates
 * data streaming using actors models
 * Erlang friendly pattern matching  
 

@@ -6,4 +6,6 @@ log/
 ebin/
 .rebar/
 rebar
+test/*.beam
+test/test.erl
 
