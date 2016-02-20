@@ -9,11 +9,11 @@
 -module(esio_stream). 
 -include("esio.hrl").
 
--export([new/3]).
+-export([stream/3, match/3]).
 
 %%
 %% 
-new(Sock, Uid, Query) ->
+stream(Sock, Uid, Query) ->
    stream:takewhile(
       fun(X) -> X =/= eos end,
       stream:unfold(fun unfold/1, 
@@ -25,7 +25,10 @@ new(Sock, Uid, Query) ->
          }
       )
    ).
-   
+
+match(Sock, Uid, Pattern) ->
+   stream(Sock, Uid, pattern_to_query(Pattern)).
+
 %%
 %%
 unfold(#{state := [], q := #{from := From} = Query} = Seed) ->
@@ -50,3 +53,12 @@ unfold(#{state := [H|T]} = Seed) ->
 lookup(#{sock := Sock, uid := Uid, q := Query}) ->
    esio:lookup(Sock, Uid, Query).
 
+
+%%
+%%
+pattern_to_query(Pattern) ->
+   #{'query' => 
+      #{bool => 
+         #{must => [#{match => maps:put(Key, Val, #{})} || {Key, Val} <- maps:to_list(Pattern)] }
+      }
+   }.

@@ -10,15 +10,39 @@
 -include("esio.hrl").
 
 -export([start/0]).
+%% socket interface
 -export([
    socket/1,
    socket/2,
-   close/1,
-   put/3, put/4, put_/3, put_/4,
-   get/2, get/3, get_/2, get_/3,
-   remove/2, remove/3, remove_/2, remove_/3,
-   lookup/2, lookup/3, lookup/4, lookup_/2, lookup_/3, lookup_/4,
-   stream/2, stream/3
+   close/1
+]).
+%% key/value (hash-map like interface)
+-export([
+   put/3,
+   put/4,
+   put_/3,
+   put_/4,
+   get/2,
+   get/3, 
+   get_/2, 
+   get_/3,
+   remove/2, 
+   remove/3, 
+   remove_/2, 
+   remove_/3
+]).
+%% query and stream interface
+-export([
+   lookup/2,
+   lookup/3,
+   lookup/4,
+   lookup_/2,
+   lookup_/3,
+   lookup_/4,
+   stream/2, 
+   stream/3, 
+   match/2, 
+   match/3 
 ]).
 
 %%
@@ -168,7 +192,19 @@ stream(Sock, Query) ->
    stream(Sock, ?WILDCARD, Query).
 
 stream(Sock, Uid, Query) ->
-   esio_stream:new(Sock, Uid, Query).
+   esio_stream:stream(Sock, Uid, Query).
+
+%%
+%% pattern match data using elastic search boolean query
+%%    https://www.elastic.co/guide/en/elasticsearch/guide/current/bool-query.html
+-spec match(sock(), req()) -> datum:stream(). 
+-spec match(sock(), key(), req()) -> datum:stream(). 
+
+match(Sock, Pattern) ->
+   match(Sock, ?WILDCARD, Pattern).
+
+match(Sock, Uid, Pattern) ->
+   esio_stream:match(Sock, Uid, Pattern).
 
 
 %%-----------------------------------------------------------------------------
