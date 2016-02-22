@@ -240,8 +240,11 @@ urn_to_cask(Uri, {urn, _, _} = Key) ->
 urn_to_cask(Uri, [_Cask, _Type, _Key] = List) ->
    uri:segments(List, Uri);
 
-urn_to_cask(Uri, [Cask, Key]) ->
-   uri:segments([Cask, <<"default">>, Key], Uri).
+urn_to_cask(Uri, [Cask, Type]) ->
+   uri:segments([Cask, Type], Uri);
+
+urn_to_cask(Uri, [Cask]) ->
+   uri:segments([Cask], Uri).
 
 %%
 %%
