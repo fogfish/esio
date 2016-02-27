@@ -53,25 +53,25 @@ free(_, #{sock := Sock}) ->
 handle({put, _, _} = Put, Pipe, #{sock := Sock, uri := Uri, req := Req} = State) ->
    request(Sock, build_http_req(Uri, Put)),
    {next_state, handle, 
-      State#{req := deq:enq(#{type => put, pipe => Pipe}, Req)}
+      State#{req => deq:enq(#{type => put, pipe => Pipe}, Req)}
    };   
 
 handle({get, _} = Get, Pipe, #{sock := Sock, uri := Uri, req := Req} = State) ->
    request(Sock, build_http_req(Uri, Get)),
    {next_state, handle, 
-      State#{req := deq:enq(#{type => get, pipe => Pipe}, Req)}
+      State#{req => deq:enq(#{type => get, pipe => Pipe}, Req)}
    };
 
 handle({remove, _} = Remove, Pipe, #{sock := Sock, uri := Uri, req := Req} = State) ->
    request(Sock, build_http_req(Uri, Remove)),
    {next_state, handle, 
-      State#{req := deq:enq(#{type => remove, pipe => Pipe}, Req)}
+      State#{req => deq:enq(#{type => remove, pipe => Pipe}, Req)}
    };
 
 handle({lookup, _, _} = Lookup, Pipe, #{sock := Sock, uri := Uri, req := Req} = State) ->
    request(Sock, build_http_req(Uri, Lookup)),
    {next_state, handle, 
-      State#{req := deq:enq(#{type => lookup, pipe => Pipe}, Req)}
+      State#{req => deq:enq(#{type => lookup, pipe => Pipe}, Req)}
    };
 
 %%
@@ -235,33 +235,48 @@ build_http_req(Uri, {lookup, Uid, Query}) ->
 %%
 %%
 urn_to_cask(Uri, {urn, _, _} = Key) ->
-   urn_to_cask(Uri, uri:segments(Key));
+   uri:segments(
+      urn_to_cask_join(
+         uri:segments(Uri),
+         uri:segments(Key)
+      ), 
+      Uri
+   ).
 
-urn_to_cask(Uri, [_Cask, _Type, _Key] = List) ->
-   uri:segments(List, Uri);
-
-urn_to_cask(Uri, [Cask, Type]) ->
-   uri:segments([Cask, Type], Uri);
-
-urn_to_cask(Uri, [Cask]) ->
-   uri:segments([Cask], Uri).
+urn_to_cask_join(undefined, Key) ->
+   erlang:element(1,
+      lists:split(erlang:min(3, length(Key)), Key)
+   );
+urn_to_cask_join(Uri, Key) ->
+   List = Uri ++ Key,
+   erlang:element(1,
+      lists:split(erlang:min(3, length(List)), List)
+   ).
 
 %%
 %%
 urn_to_search(Uri, {urn, _, _} = Key) ->
-   urn_to_search(Uri, uri:segments(Key));
+   uri:segments(
+      urn_to_search_join(
+         uri:segments(Uri),
+         uri:segments(Key)
+      ), 
+      Uri
+   ).
 
-urn_to_search(Uri, []) ->
-   uri:segments([<<"_search">>], Uri);
-
-urn_to_search(Uri, [<<"*">>]) ->
-   uri:segments([<<"_search">>], Uri);
-
-urn_to_search(Uri, [Cask]) ->
-   uri:segments([Cask, <<"_search">>], Uri);
-
-urn_to_search(Uri, [Cask, Type | _]) ->
-   uri:segments([Cask, Type, <<"_search">>], Uri).
+urn_to_search_join([], []) ->
+   [<<"_search">>];
+urn_to_search_join([<<"*">>], _) ->
+   [<<"_search">>];
+urn_to_search_join(undefined, Key) ->
+   erlang:element(1,
+      lists:split(erlang:min(2, length(Key)), Key)
+   ) ++ [<<"_search">>];
+urn_to_search_join(Uri, Key) ->
+   List = Uri ++ Key,
+   erlang:element(1,
+      lists:split(erlang:min(2, length(List)), List)
+   ) ++ [<<"_search">>].
 
       
 

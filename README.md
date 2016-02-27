@@ -36,7 +36,7 @@ to be defined
 
 ### continue to ...
 * understand [the design considerations](doc/design.md)
-
+* see [usage examples](doc/example.md) 
 
 
 ## contributing

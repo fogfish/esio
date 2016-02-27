@@ -4,7 +4,7 @@
 %%   This software may be modified and distributed under the terms
 %%   of the MIT license.  See the LICENSE file for details.
 %%
--module(esio_sup).
+-module(esio_socket_bulk_sup).
 -behaviour(supervisor).
 -author('dmitry.kolesnikov@zalando.fi').
 
@@ -12,9 +12,9 @@
    start_link/0, init/1
 ]).
 
--define(CHILD(Type, I),            {I,  {I, start_link,   []}, permanent, 5000, Type, dynamic}).
--define(CHILD(Type, I, Args),      {I,  {I, start_link, Args}, permanent, 5000, Type, dynamic}).
--define(CHILD(Type, ID, I, Args),  {ID, {I, start_link, Args}, permanent, 5000, Type, dynamic}).
+-define(CHILD(Type, I),            {I,  {I, start_link,   []}, temporary, 5000, Type, dynamic}).
+-define(CHILD(Type, I, Args),      {I,  {I, start_link, Args}, temporary, 5000, Type, dynamic}).
+-define(CHILD(Type, ID, I, Args),  {ID, {I, start_link, Args}, temporary, 5000, Type, dynamic}).
 
 %%-----------------------------------------------------------------------------
 %%
@@ -28,10 +28,9 @@ start_link() ->
 init([]) ->   
    {ok,
       {
-         {one_for_one, 4, 1800},
+         {simple_one_for_one, 100000, 1},
          [
-            ?CHILD(supervisor, esio_socket_sup)
-           ,?CHILD(supervisor, esio_socket_bulk_sup)
+            ?CHILD(worker, esio_socket_bulk)
          ]
       }
    }.
