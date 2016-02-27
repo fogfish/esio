@@ -10,8 +10,12 @@
 -define(TIMEOUT, 5000).
 
 %%
+%% the namespace identifier used by library
+-define(NID, <<"es">>).
+
+%%
 %% wild-card urn, matches any indexes
--define(WILDCARD,  {urn, <<"esio">>, <<"*">>}).
+-define(WILDCARD,  {urn, ?NID, <<"*">>}).
 
 %%
 %% number of elements to read

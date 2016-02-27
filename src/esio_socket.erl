@@ -244,14 +244,13 @@ urn_to_cask(Uri, {urn, _, _} = Key) ->
    ).
 
 urn_to_cask_join(undefined, Key) ->
-   erlang:element(1,
-      lists:split(erlang:min(3, length(Key)), Key)
-   );
+   Key;
 urn_to_cask_join(Uri, Key) ->
-   List = Uri ++ Key,
-   erlang:element(1,
-      lists:split(erlang:min(3, length(List)), List)
-   ).
+   {X, _} = lists:split(
+      erlang:min(length(Uri), 3 - length(Key)),
+      Uri
+   ),
+   X ++ Key.
 
 %%
 %%
@@ -264,21 +263,16 @@ urn_to_search(Uri, {urn, _, _} = Key) ->
       Uri
    ).
 
-urn_to_search_join([], []) ->
-   [<<"_search">>];
 urn_to_search_join([<<"*">>], _) ->
    [<<"_search">>];
+urn_to_search_join(_, [<<"*">>]) ->
+   [<<"_search">>];
 urn_to_search_join(undefined, Key) ->
-   erlang:element(1,
-      lists:split(erlang:min(2, length(Key)), Key)
-   ) ++ [<<"_search">>];
+   Key;
 urn_to_search_join(Uri, Key) ->
-   List = Uri ++ Key,
-   erlang:element(1,
-      lists:split(erlang:min(2, length(List)), List)
-   ) ++ [<<"_search">>].
-
-      
-
-
+   {X, _} = lists:split(
+      erlang:min(length(Uri), 2 - length(Key)),
+      Uri
+   ),
+   X ++ Key ++ [<<"_search">>].
 
