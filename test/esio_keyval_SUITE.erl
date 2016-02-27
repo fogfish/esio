@@ -54,7 +54,7 @@ groups() ->
 %%
 init_per_suite(Config) ->
    ok = esio:start(),
-   [{elastic_search_url, "http://docker:9200"},{base, uri:new("urn:esio:testcask:testtype")}|Config].
+   [{elastic_search_url, "http://docker:9200"},{base, uri:new("urn:es:testcask:testtype")}|Config].
 
 end_per_suite(_Config) ->
    ok.
