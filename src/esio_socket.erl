@@ -53,25 +53,25 @@ free(_, #{sock := Sock}) ->
 handle({put, _, _} = Put, Pipe, #{sock := Sock, uri := Uri, req := Req} = State) ->
    request(Sock, build_http_req(Uri, Put)),
    {next_state, handle, 
-      State#{req := deq:enq(#{type => put, pipe => Pipe}, Req)}
+      State#{req => deq:enq(#{type => put, pipe => Pipe}, Req)}
    };   
 
 handle({get, _} = Get, Pipe, #{sock := Sock, uri := Uri, req := Req} = State) ->
    request(Sock, build_http_req(Uri, Get)),
    {next_state, handle, 
-      State#{req := deq:enq(#{type => get, pipe => Pipe}, Req)}
+      State#{req => deq:enq(#{type => get, pipe => Pipe}, Req)}
    };
 
 handle({remove, _} = Remove, Pipe, #{sock := Sock, uri := Uri, req := Req} = State) ->
    request(Sock, build_http_req(Uri, Remove)),
    {next_state, handle, 
-      State#{req := deq:enq(#{type => remove, pipe => Pipe}, Req)}
+      State#{req => deq:enq(#{type => remove, pipe => Pipe}, Req)}
    };
 
 handle({lookup, _, _} = Lookup, Pipe, #{sock := Sock, uri := Uri, req := Req} = State) ->
    request(Sock, build_http_req(Uri, Lookup)),
    {next_state, handle, 
-      State#{req := deq:enq(#{type => lookup, pipe => Pipe}, Req)}
+      State#{req => deq:enq(#{type => lookup, pipe => Pipe}, Req)}
    };
 
 %%

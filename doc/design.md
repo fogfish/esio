@@ -9,5 +9,12 @@ The globally unique document reference is the triple: index id, mapping id and k
 urn:esio:index:mapping:key
 ```
 
+## bulk intake
+
+Elastic Search provides [bulk api](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html). The library implement a dedicated bulk socket that takes care of buffering and flushing stream of data (use `bulk` option to create socket).
+```
+{ok, Sock} = esio:socket("http://192.168.99.100:9200", [bulk]).
+```
+
 
 to be continued

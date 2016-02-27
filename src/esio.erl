@@ -65,6 +65,9 @@ start() ->
 %%   * uri:uri() - define the host and port for socket connection.
 %%                 it is allowed to define base path, then its is used
 %%                 to extends the index / type / key identity. 
+%%   * bulk      - create bulk socket
+%%   * n         - number of messages to buffer in bulk request 
+%%   * t         - timeout to flush bulk request buffer
 %%
 -spec socket(uri:uri()) -> {ok, sock()} | {error, _}.
 -spec socket(uri:uri(), [_]) -> {ok, sock()} | {error, _}.
@@ -73,7 +76,14 @@ socket(Uri) ->
    socket(Uri, []).
 
 socket(Uri, Opts) ->
-   supervisor:start_child(esio_socket_sup, [uri:new(Uri), Opts]).
+   case opts:val(bulk, false, Opts) of
+      false ->
+         supervisor:start_child(esio_socket_sup, [uri:new(Uri), Opts]);
+      true  ->
+         supervisor:start_child(esio_socket_bulk_sup, [uri:new(Uri), Opts]);
+      bulk  ->
+         supervisor:start_child(esio_socket_bulk_sup, [uri:new(Uri), Opts])
+   end.
 
 %%
 %% close communication socket
