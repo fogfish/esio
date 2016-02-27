@@ -60,7 +60,11 @@ start() ->
 
 
 %%
-%% create communication socket to Elastic Search
+%% create communication socket to Elastic Search.
+%%  Options
+%%   * uri:uri() - define the host and port for socket connection.
+%%                 it is allowed to define base path, then its is used
+%%                 to extends the index / type / key identity. 
 %%
 -spec socket(uri:uri()) -> {ok, sock()} | {error, _}.
 -spec socket(uri:uri(), [_]) -> {ok, sock()} | {error, _}.
