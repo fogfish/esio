@@ -19,6 +19,7 @@ stream(Sock, Uid, Query) ->
       stream:unfold(fun unfold/1, 
          #{
             state => [], 
+            score =>  1,
             sock  => Sock, 
             uid   => Uid, 
             q     => Query#{from => 0, size => ?CONFIG_STREAM_CHUNK}
@@ -36,17 +37,18 @@ unfold(#{state := [], q := #{from := From} = Query} = Seed) ->
       {ok, #{<<"hits">> := []}} ->
          {eos, Seed};
 
-      {ok, #{<<"hits">> := Hits}} ->
+      {ok, #{<<"hits">> := Hits, <<"max_score">> := Score}} ->
          unfold(
             Seed#{
                state => Hits, 
+               score => Score,
                q     => Query#{from => From + length(Hits)}
             }
          )
    end;   
 
-unfold(#{state := [H|T]} = Seed) ->
-   {H, Seed#{state := T}}. 
+unfold(#{state := [#{<<"_score">> := Score} = H|T], score := Base} = Seed) ->
+   {H#{<<"_score">> := Score / Base}, Seed#{state := T}}. 
 
 %%
 %%
