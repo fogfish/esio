@@ -55,9 +55,9 @@ free(_, #{sock := Sock}) ->
 
 %%
 %% client requests
-handle({put, _, _}=Req, Pipe, #{sock := Sock, uri := Uri, req := Req, chunk := Chunk0, n := N} = State) ->
+handle({put, _, _}=Put, Pipe, #{sock := Sock, uri := Uri, req := Req, chunk := Chunk0, n := N} = State) ->
    case 
-      {deq:enq(Req, Chunk0), deq:length(Chunk0) + 1}
+      {deq:enq(Put, Chunk0), deq:length(Chunk0) + 1}
    of
       {Chunk1, Len} when Len >= N ->
          request(Sock, build_http_req(Uri, Chunk1)),
@@ -72,16 +72,16 @@ handle({put, _, _}=Req, Pipe, #{sock := Sock, uri := Uri, req := Req, chunk := C
          }
    end;
 
-handle(flush, _, #{sock := Sock, uri := Uri, req := Req, chunk := Chunk0, t := T} = State) ->
+handle(sync, Pipe, #{sock := Sock, uri := Uri, req := Req, chunk := Chunk0, t := T} = State) ->
    case deq:length(Chunk0) of
       0 -> 
          {next_state, handle,
-            State#{t => tempus:reset(T, flush)}
+            State#{t => tempus:reset(T, sync)}
          };
       _ ->
          request(Sock, build_http_req(Uri, Chunk0)),
          {next_state, handle, 
-            State#{req => deq:enq(#{chunk => Chunk0}, Req), chunk => deq:new(), t => tempus:reset(T, flush)}
+            State#{req => deq:enq(#{pipe => Pipe}, Req), chunk => deq:new(), t => tempus:reset(T, sync)}
          }
    end;
 
