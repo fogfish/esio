@@ -10,6 +10,8 @@
 -behaviour(pipe).
 -author('dmitry.kolesnikov@zalando.fi').
 
+-include("esio.hrl").
+
 -export([
    start_link/2,
    init/1,
@@ -35,8 +37,8 @@ init([Uri, Opts]) ->
          sock  => Sock, 
          uri   => Uri, 
          opts  => Opts,
-         t     => tempus:timer(opts:val(t, 10000, Opts), flush),
-         n     => opts:val(n, 10, Opts),
+         t     => tempus:timer(opts:val(t, ?CONFIG_T_SYNC, Opts), sync),
+         n     => opts:val(n, ?CONFIG_BULK_CHUNK, Opts),
          req   => deq:new(),
          chunk => deq:new()
       }
@@ -53,17 +55,18 @@ free(_, #{sock := Sock}) ->
 
 %%
 %% client requests
-handle({put, Key, Val}, Pipe, #{sock := Sock, uri := Uri, req := Req, chunk := Chunk0, n := N} = State) ->
+handle({put, _, _}=Req, Pipe, #{sock := Sock, uri := Uri, req := Req, chunk := Chunk0, n := N} = State) ->
    case 
-      {deq:enq({Pipe, Key, Val}, Chunk0), deq:length(Chunk0) + 1}
+      {deq:enq(Req, Chunk0), deq:length(Chunk0) + 1}
    of
       {Chunk1, Len} when Len >= N ->
          request(Sock, build_http_req(Uri, Chunk1)),
          {next_state, handle, 
-            State#{req => deq:enq(#{chunk => Chunk1}, Req), chunk => deq:new()}
+            State#{req => deq:enq(#{pipe => Pipe}, Req), chunk => deq:new()}
          };
 
       {Chunk1,   _} ->
+         pipe:a(Pipe, ok),
          {next_state, handle, 
             State#{chunk => Chunk1}
          }
@@ -135,19 +138,10 @@ request(Sock, Packets) ->
 
 %%
 %% stream response to client
-response(#{code := Code, chunk := Chunk}) 
- when Code >= 200, Code < 300 ->
-   response(Chunk, ok);
-
-response(#{code := Code, chunk := Chunk}) ->
-   response(Chunk, {error, Code}).
-
-response({}, _) ->
-   ok;
-response(Chunk, Msg) ->
-   {Pipe, _, _} = deq:head(Chunk),
-   pipe:a(Pipe, Msg),
-   response(deq:tail(Chunk), Msg).
+response(#{code := _Code, pipe := Pipe})  ->
+   %% @todo: bulk api response is not very efficient to ack the request.
+   %%        the library implements fire-and-forget  
+   pipe:a(Pipe, ok).
 
 
 %%
