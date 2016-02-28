@@ -27,4 +27,4 @@
 
 %%
 %% default timeout to sync buffers
--define(CONFIG_T_SYNC,      60000). 
+-define(CONFIG_T_SYNC,      60000).
