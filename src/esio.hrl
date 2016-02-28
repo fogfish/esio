@@ -20,3 +20,11 @@
 %%
 %% number of elements to read
 -define(CONFIG_STREAM_CHUNK,  100).
+
+%%
+%% number of elements to write
+-define(CONFIG_BULK_CHUNK,    500).
+
+%%
+%% default timeout to sync buffers
+-define(CONFIG_T_SYNC,      60000).
