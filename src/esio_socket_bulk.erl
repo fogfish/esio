@@ -72,7 +72,7 @@ handle({put, _, _}=Put, Pipe, #{sock := Sock, uri := Uri, req := Req, chunk := C
          }
    end;
 
-handle(sync, Pipe, #{sock := Sock, uri := Uri, req := Req, chunk := Chunk0, t := T} = State) ->
+handle(sync, _, #{sock := Sock, uri := Uri, req := Req, chunk := Chunk0, t := T} = State) ->
    case deq:length(Chunk0) of
       0 -> 
          {next_state, handle,
@@ -81,7 +81,7 @@ handle(sync, Pipe, #{sock := Sock, uri := Uri, req := Req, chunk := Chunk0, t :=
       _ ->
          request(Sock, build_http_req(Uri, Chunk0)),
          {next_state, handle, 
-            State#{req => deq:enq(#{pipe => Pipe}, Req), chunk => deq:new(), t => tempus:reset(T, sync)}
+            State#{req => deq:enq(#{}, Req), chunk => deq:new(), t => tempus:reset(T, sync)}
          }
    end;
 
@@ -141,7 +141,11 @@ request(Sock, Packets) ->
 response(#{code := _Code, pipe := Pipe})  ->
    %% @todo: bulk api response is not very efficient to ack the request.
    %%        the library implements fire-and-forget  
-   pipe:a(Pipe, ok).
+   pipe:a(Pipe, ok);
+
+response(_) ->
+   %% sync successful, no ack is required
+   ok.
 
 
 %%
