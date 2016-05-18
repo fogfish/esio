@@ -1,13 +1,13 @@
-# how to contribute
+# How to Contribute
 
-`esio` is MIT licensed and accepts contributions via GitHub pull requests.
+`esio` uses the MIT license and accepts contributions via GitHub pull requests.
 
-## getting started
+## Getting Started
 
 * Fork the repository on GitHub
 * Read the README.md for build instructions
 
-## commit message
+## Commit Message
 
 The commit message helps us to write a good release note, speed-up review process. The message should address two question what changed and why. The project follows the template defined by chapter [Contributing to a Project](http://git-scm.com/book/ch5-2.html) of Git book.
 
