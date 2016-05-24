@@ -1,6 +1,6 @@
 #Esio: Elasticsearch I/O
 
-Esio is an Erlang library that provides an HTTP client for [Elasticsearch](https://www.elastic.co/products/elasticsearch), which provides a  sophisticated [RESTful API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs.html). It implements a data access layer for Erlang applications and makes data and objects semantic-friendly with Erlang. 
+Esio is an Erlang library that provides an HTTP client for [Elasticsearch](https://www.elastic.co/products/elasticsearch), which offers a sophisticated [RESTful API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs.html). It implements a data access layer for Erlang applications and makes data and objects semantic-friendly with Erlang. 
 
 Unlike other projects, Esio does not aim to provide a generic HTTP-proxy approach. Instead, it does the following: 
 * uses an urn-base schema to resolve identity crises and the hierarchical nature of index/type/key notation
