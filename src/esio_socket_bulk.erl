@@ -87,7 +87,11 @@ handle(sync, _, #{sock := Sock, uri := Uri, req := Req, chunk := Chunk0, t := T}
 
 %%
 %% socket is terminated 
-handle({sidedown, b, normal}, _, #{uri := Uri, opts := Opts} = State) ->
+handle({sidedown, b, normal}, _, #{uri := Uri, opts := Opts, req := Req} = State) ->
+   lists:foreach(
+      fun(#{pipe := Pipe}) -> pipe:a(Pipe, {error, 503}) end,
+      deq:list(Req)
+   ),
    Sock = knet:socket(Uri, Opts),
    {next_state, handle, 
       State#{sock => Sock}
