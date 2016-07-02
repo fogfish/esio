@@ -32,7 +32,8 @@ match(Sock, Uid, Pattern) ->
 
 %%
 %%
-unfold(#{state := [], q := #{from := From} = Query} = Seed) ->
+unfold(#{state := [], q := #{from := From} = Query} = Seed)
+ when From < 10000 ->
    case lookup(Seed) of
       {ok, #{<<"hits">> := []}} ->
          {eos, Seed};
@@ -46,6 +47,9 @@ unfold(#{state := [], q := #{from := From} = Query} = Seed) ->
             }
          )
    end;   
+unfold(#{state := [], q := #{from := From}} = Seed)
+ when From >= 10000 ->
+   {eos, Seed};
 
 unfold(#{state := [H|T], score := null} = Seed) ->
    {H, Seed#{state := T}};
