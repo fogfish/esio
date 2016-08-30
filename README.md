@@ -32,7 +32,7 @@ This library uses [rebar](https://github.com/rebar/rebar/wiki). Use the followin
 ### Running Esio
 Esio exposes all its functionality through its [public interface](src/esio.erl). This enables client applications to manage socket connections to Elasticsearch, execute basic key/value (hashmap-like) operations and search arbitrary documents in Elasticsearch. 
 
-You can experiment with Esio's features in your development console. This requires downloading Erlang/OTP version 18.0 or later and Elasticsearch. Elasticsearch's Docker container is easiest way to run standalone instance of Elasticsearch for development purposes.
+You can experiment with Esio's features in your development console. This requires downloading Erlang/OTP version 18.0 or later and Elasticsearch. Elasticsearch's [Docker container](https://hub.docker.com/_/elasticsearch/) is easiest way to run a standalone instance of Elasticsearch for development purposes.
 
 ```
 docker run -it -p 9200:9200 fogfish/elasticsearch
