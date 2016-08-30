@@ -1,8 +1,10 @@
 #Esio: Elasticsearch I/O
 
+[![Build Status](https://secure.travis-ci.org/zalando/esio.svg?branch=master)](http://travis-ci.org/zalando/esio)
+
 Esio is an Erlang library that provides an HTTP client for [Elasticsearch](https://www.elastic.co/products/elasticsearch), which offers a sophisticated [RESTful API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs.html). It implements a data access layer for Erlang applications and makes data and objects semantic-friendly with Erlang. 
 
-Unlike other projects, Esio does not aim to provide a generic HTTP-proxy approach. Instead, it does the following: 
+Unlike other, similar projects, Esio does not aim to provide a generic HTTP-proxy approach, but instead: 
 * uses an urn-base schema to resolve identity crises and the hierarchical nature of index/type/key notation
 * offers query templates to counter the complexity of DSL 
 * uses Actor models for data streaming
@@ -12,15 +14,13 @@ Esio is still under development. Supplementary files:
 * [design considerations](doc/design.md)
 * [usage examples](doc/example.md) 
 
-[![Build Status](https://secure.travis-ci.org/zalando/esio.svg?branch=master)](http://travis-ci.org/zalando/esio)
-
 ### Installing/Using Esio
 
-The latest version of Esio is available from the master branch. All development, including new features and bug fixes, take place on the master branch using forking and pull requests as described in the [contribution guidelines](doc/contribution.md). 
+The latest version of Esio is available from the master branch. All development, including new features and bug fixes, take place on the master branch using forking and pull requests (as described in the [contribution guidelines](doc/contribution.md)). 
 
-To use and develop the library you need:
+To use and develop Esio, you need:
 * Erlang/OTP 18.x or later
-* Elastic Search 2.x or later
+* Elasticsearch 2.x or later
 
 This library uses [rebar](https://github.com/rebar/rebar/wiki). Use the following code snippet to include Esio in your `rebar.config`:
 ```
@@ -29,21 +29,22 @@ This library uses [rebar](https://github.com/rebar/rebar/wiki). Use the followin
    }
 ``` 
 
-### Running `esio`
-The library exposes all its functionality through [public interface](src/esio.erl), allowing client application to manage socket connection to Elastic Search, execute basic key/value (hashmap-like) operations and search arbitrary documents in Elastic Search. 
+### Running Esio
+Esio exposes all its functionality through its [public interface](src/esio.erl). This enables client applications to manage socket connections to Elasticsearch, execute basic key/value (hashmap-like) operations and search arbitrary documents in Elasticsearch. 
 
-You can experiment with `esio` features in your development console. This requires downloading Erlang/OTP version 18.0 or later and Elastic Search. The docker container is easiest way to run standalone instance of Elastic Search for development purposes.
+You can experiment with Esio's features in your development console. This requires downloading Erlang/OTP version 18.0 or later and Elasticsearch. Elasticsearch's Docker container is easiest way to run standalone instance of Elasticsearch for development purposes.
 
 ```
 docker run -it -p 9200:9200 fogfish/elasticsearch
 ```
 
-Build and run the library in development console:     
+Build and run Esio in your development console:     
 ```
 make && make run
 ```
 
-Let's create an index and store some documents
+Let's create an index and store some documents:
+
 ```erlang
 %% 
 %% start library
@@ -76,14 +77,11 @@ esio:match(Sock, #{tags => yellow}).
 esio:close(Sock).
 ```
 
-See other examples [here](doc/example.md)
+See other examples [here](doc/example.md).
 
 
-### Contributing
-See [contribution guideline](doc/contribution.md) for details on PR submission.
-
-### Bugs
-See [bug reporting](doc/bugs.md) for guidelines on raising issues. Submit bugs to the [Issues Tracker](https://github.com/zalando/esio/issues). 
+### Contributing & Fixing Bugs
+See our [contribution guidelines](doc/contribution.md) for details on how to submit PRs. For bugs, see our [bug reporting](doc/bugs.md) guidelines and let us know about new bugs via the [Issues Tracker](https://github.com/zalando/esio/issues). 
 
 ### Contact
 
