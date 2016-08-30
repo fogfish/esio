@@ -35,7 +35,7 @@ Esio exposes all its functionality through its [public interface](src/esio.erl).
 You can experiment with Esio's features in your development console. This requires downloading Erlang/OTP version 18.0 or later and Elasticsearch. Elasticsearch's [Docker container](https://hub.docker.com/_/elasticsearch/) is easiest way to run a standalone instance of Elasticsearch for development purposes.
 
 ```
-docker run -it -p 9200:9200 fogfish/elasticsearch
+docker run -it -p 9200:9200 elasticsearch
 ```
 
 Build and run Esio in your development console:     
