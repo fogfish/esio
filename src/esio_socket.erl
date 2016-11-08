@@ -162,8 +162,8 @@ response(#{type := lookup, code :=  200, pipe := Pipe, json := Json}) ->
    #{<<"hits">> := Val} = to_json(Json),
    pipe:a(Pipe, {ok, Val});
 
-response(#{type := lookup, code := Code, pipe := Pipe, json := Json}) ->
-   pipe:a(Pipe, {error, Code, Json}).
+response(#{type := lookup, code := Code, pipe := Pipe}) ->
+   pipe:a(Pipe, {error, Code}).
 
 
 
