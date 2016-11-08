@@ -135,8 +135,12 @@ response(#{type := put, code := Code, pipe := Pipe, json := Json})
  when Code >= 200, Code < 300 ->
    %% TODO: how to handle meta-data about key (e.g. created and version)?
    %%   <<"{\"_index\":\"a\",\"_type\":\"b\",\"_id\":\"1\",\"_version\":1,\"created\":true}">>
-   #{<<"_id">> := Id} = to_json(Json),
-   pipe:a(Pipe, {ok, Id});
+   case to_json(Json) of
+      #{<<"_id">> := Id} -> 
+         pipe:a(Pipe, {ok, Id});
+      _ -> 
+         pipe:a(Pipe, ok)
+   end;
 
 response(#{type := put, code := Code, pipe := Pipe}) ->
    pipe:a(Pipe, {error, Code});
@@ -235,7 +239,10 @@ urn_to_method(Uri) ->
       [_, _, _] -> 'PUT';
 
       %% /{index}/{type} (use auto generated ID)
-      [_, _]    -> 'POST'
+      [_, _]    -> 'POST';
+
+      %% /{index} (schema deployment)
+      [_]       -> 'PUT'
    end.
 
 %%
