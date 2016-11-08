@@ -131,23 +131,19 @@ request(Sock, Packets) ->
 
 %%
 %% stream response to client
-response(#{type := put, code := Code, pipe := Pipe})
+response(#{type := put, code := Code, pipe := Pipe, json := Json})
  when Code >= 200, Code < 300 ->
    %% TODO: how to handle meta-data about key (e.g. created and version)?
    %%   <<"{\"_index\":\"a\",\"_type\":\"b\",\"_id\":\"1\",\"_version\":1,\"created\":true}">>
-   pipe:a(Pipe, ok);
+   #{<<"_id">> := Id} = to_json(Json),
+   pipe:a(Pipe, {ok, Id});
 
 response(#{type := put, code := Code, pipe := Pipe}) ->
    pipe:a(Pipe, {error, Code});
 
 response(#{type := get, code :=  200, pipe := Pipe, json := Json}) ->
-   Val = jsx:decode(
-      erlang:iolist_to_binary(
-         lists:reverse(Json)
-      ),
-      [return_maps]
-   ),
-   pipe:a(Pipe, {ok, maps:get(<<"_source">>, Val)});
+   #{<<"_source">> := Val} = to_json(Json),
+   pipe:a(Pipe, {ok, Val});
 
 response(#{type := get, code := 404, pipe := Pipe}) ->
    pipe:a(Pipe, {error, not_found});
@@ -163,13 +159,8 @@ response(#{type := remove, code := Code, pipe := Pipe}) ->
    pipe:a(Pipe, {error, Code});
 
 response(#{type := lookup, code :=  200, pipe := Pipe, json := Json}) ->
-   Val = jsx:decode(
-      erlang:iolist_to_binary(
-         lists:reverse(Json)
-      ),
-      [return_maps]
-   ),
-   pipe:a(Pipe, {ok, maps:get(<<"hits">>, Val)});
+   #{<<"hits">> := Val} = to_json(Json),
+   pipe:a(Pipe, {ok, Val});
 
 response(#{type := lookup, code := Code, pipe := Pipe}) ->
    pipe:a(Pipe, {error, Code}).
@@ -180,10 +171,11 @@ response(#{type := lookup, code := Code, pipe := Pipe}) ->
 %%
 %% 
 build_http_req(Uri, {put, Key, Val}) ->
+   Url = urn_to_cask(Uri, Key),
    [
       {
-         'PUT',
-         urn_to_cask(Uri, Key),
+         urn_to_method(Url),
+         Url,
          [
             {'Content-Type',  {application, json}},
             {'Transfer-Encoding', <<"chunked">>},
@@ -235,6 +227,16 @@ build_http_req(Uri, {lookup, Uid, Query}) ->
       eof
    ].
 
+%%
+%%
+urn_to_method(Uri) ->
+   case uri:segments(Uri) of
+      %% /{index}/{type}/{id} (use own ID)
+      [_, _, _] -> 'PUT';
+
+      %% /{index}/{type} (use auto generated ID)
+      [_, _]    -> 'POST'
+   end.
 
 %%
 %%
@@ -272,7 +274,7 @@ urn_to_search_join([<<"*">>], _) ->
 urn_to_search_join(_, [<<"*">>]) ->
    [<<"_search">>];
 urn_to_search_join(undefined, Key) ->
-   Key;
+   Key ++ [<<"_search">>];
 urn_to_search_join(Uri, Key) ->
    {X, _} = lists:split(
       erlang:min(length(Uri), 2 - length(Key)),
@@ -280,3 +282,13 @@ urn_to_search_join(Uri, Key) ->
    ),
    X ++ Key ++ [<<"_search">>].
 
+
+%%
+%%
+to_json(Pckt) ->
+   jsx:decode(
+      erlang:iolist_to_binary(
+         lists:reverse(Pckt)
+      ),
+      [return_maps]
+   ).

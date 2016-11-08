@@ -30,8 +30,8 @@
 
 all() ->
    [
-      {group, keyval},
-      {group, stream}
+      {group, keyval}
+     ,{group, stream}
    ].
 
 groups() ->
@@ -76,15 +76,19 @@ end_per_group(_, _Config) ->
 put(Config) ->
    {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
    Key1 = uri:join([put1], ?config(base, Config)),
-   ok   = esio:put(Sock, Key1, #{<<"val">> => 1}),
+   {ok, <<"put1">>} = esio:put(Sock, Key1, #{<<"val">> => 1}),
+
+   %% auto id
+   KeyX = ?config(base, Config),
+   {ok, _} = esio:put(Sock, KeyX, #{<<"val">> => 1}),
 
    timer:sleep(100),
    Key2 = uri:join([put2], ?config(base, Config)),
-   ok   = esio:put_(Sock, Key2, #{<<"val">> => 2}, false),
+   ok = esio:put_(Sock, Key2, #{<<"val">> => 2}, false),
 
    timer:sleep(100),
    Key3 = uri:join([put3], ?config(base, Config)),
-   recv(ok, 
+   recv({ok, <<"put3">>}, 
       esio:put_(Sock, Key3, #{<<"val">> => 3}, true)
    ),
    esio:close(Sock).
@@ -93,17 +97,17 @@ put(Config) ->
 get(Config) ->
    {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
    Key1 = uri:join([get1], ?config(base, Config)),
-   ok   = esio:put(Sock, Key1, #{<<"val">> => 1}),
+   {ok, _} = esio:put(Sock, Key1, #{<<"val">> => 1}),
    {ok, #{<<"val">> := 1}} = esio:get(Sock, Key1),
 
    timer:sleep(100), 
    Key2 = uri:join([get2], ?config(base, Config)),
-   ok   = esio:put(Sock, Key2, #{<<"val">> => 1}),
+   {ok, _} = esio:put(Sock, Key2, #{<<"val">> => 1}),
    ok   = esio:get_(Sock, Key2, false),
   
    timer:sleep(100),
    Key3 = uri:join([get3], ?config(base, Config)),
-   ok   = esio:put(Sock, Key3, #{<<"val">> => 1}),
+   {ok, _} = esio:put(Sock, Key3, #{<<"val">> => 1}),
    recv({ok, #{<<"val">> => 1}},
       esio:get_(Sock, Key3, true)
    ),
@@ -114,12 +118,12 @@ get(Config) ->
 remove(Config) ->
    {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
    Key1 = uri:join([rem1], ?config(base, Config)),
-   ok   = esio:put(Sock, Key1, #{<<"val">> => 1}),
+   {ok, _} = esio:put(Sock, Key1, #{<<"val">> => 1}),
    ok   = esio:remove(Sock, Key1),
    {error, not_found} = esio:get(Sock, Key1),
 
    Key2 = uri:join([rem2], ?config(base, Config)),
-   ok   = esio:put(Sock, Key2, #{<<"val">> => 1}),
+   {ok, _} = esio:put(Sock, Key2, #{<<"val">> => 1}),
    ok   = esio:remove_(Sock, Key2, false),
    {error, not_found} = esio:get(Sock, Key2),
 
@@ -127,7 +131,7 @@ remove(Config) ->
    %% Note: looks like Linearizability issue at Elastic Search
    %% DELETE / GET are not handled properly
    Key3 = uri:join([rem3], ?config(base, Config)),
-   ok   = esio:put(Sock, Key3, #{<<"val">> => 1}),
+   {ok, _} = esio:put(Sock, Key3, #{<<"val">> => 1}),
    recv(ok,
       esio:remove_(Sock, Key3, true)
    ),

@@ -94,8 +94,8 @@ close(Sock) ->
 
 %%
 %% synchronous put operation
--spec put(sock(), key(), val()) -> ok | {error, _}.
--spec put(sock(), key(), val(), timeout()) -> ok | {error, _}.
+-spec put(sock(), key(), val()) -> {ok, _} | {error, _}.
+-spec put(sock(), key(), val(), timeout()) -> {ok, _} | {error, _}.
 
 put(Sock, Key, Val) ->
    put(Sock, Key, Val, ?TIMEOUT).
