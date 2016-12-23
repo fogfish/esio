@@ -1,11 +1,11 @@
 *.sublime-*
 *.tgz
 *.bundle
-deps/
+_build/
 log/
 ebin/
-.rebar/
-rebar
+rebar3
+rebar.lock
 test/*.beam
 test/test.erl
 
