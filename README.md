@@ -22,7 +22,7 @@ To use and develop Esio, you need:
 * Erlang/OTP 18.x or later
 * Elasticsearch 2.x or later
 
-This library uses [rebar](https://github.com/rebar/rebar/wiki). Use the following code snippet to include Esio in your `rebar.config`:
+This library uses [rebar3](https://github.com/erlang/rebar3). Use the following code snippet to include Esio in your `rebar.config`:
 ```
    {esio, ".*",
       {git, "https://github.com/zalando/esio", {branch, master}}
