@@ -236,7 +236,7 @@ build_http_req(Uri, {lookup, Uid, Query}) ->
 urn_to_method(Uri) ->
    case uri:segments(Uri) of
       %% /{index}/{type}/{id} (use own ID)
-      [_, _, _] -> 'PUT';
+      [_, _, _ | _] -> 'PUT';
 
       %% /{index}/{type} (use auto generated ID)
       [_, _]    -> 'POST';
@@ -260,10 +260,17 @@ urn_to_cask_join(undefined, Key) ->
    Key;
 urn_to_cask_join(Uri, Key) ->
    {X, _} = lists:split(
-      erlang:min(length(Uri), 3 - length(Key)),
+      erlang:min(length(Uri), erlang:max(3 - length(Key), 0)),
       Uri
    ),
-   X ++ Key.
+   reduce_urn(X ++ Key).
+
+reduce_urn([Cask, Type | Uid])
+ when length(Uid) > 1 ->
+   [Cask, Type, iolist_to_binary(lists:join($:, Uid))];
+
+reduce_urn(Urn) ->
+   Urn.
 
 %%
 %%
