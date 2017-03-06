@@ -141,7 +141,6 @@ remove(Config) ->
 
 lookup(Config) ->
    {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
-   Urn = ?config(base, Config),
 
    {ok, _} = esio:lookup(Sock, {testcask, testtype}, #{'query' => #{'match_all' => #{}} }),
 

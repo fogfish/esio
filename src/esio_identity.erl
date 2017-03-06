@@ -67,8 +67,12 @@ keyval(Uri, Key) ->
       Uri
    ).
 
+keyval_identity(undefined, undefined) ->
+   [];
 keyval_identity(undefined, {Cask, Type, Key}) ->
    [scalar:s(Cask), scalar:s(Type), scalar:s(Key)];
+keyval_identity(Default, undefined) ->
+   Default;
 
 keyval_identity([Cask], {_, Type, Key}) ->
    [scalar:s(Cask), scalar:s(Type), scalar:s(Key)];
