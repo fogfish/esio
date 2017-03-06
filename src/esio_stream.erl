@@ -53,6 +53,8 @@ unfold(#{state := [], q := #{from := From}} = Seed)
 
 unfold(#{state := [H|T], score := null} = Seed) ->
    {H, Seed#{state := T}};
+unfold(#{state := [#{<<"_score">> := Score} = H|T], score := 0} = Seed) ->
+   {H#{<<"_score">> := Score}, Seed#{state := T}};
 unfold(#{state := [#{<<"_score">> := Score} = H|T], score := Base} = Seed) ->
    {H#{<<"_score">> := Score / Base}, Seed#{state := T}}. 
 

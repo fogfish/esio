@@ -50,6 +50,8 @@ search_identity(undefined, {Cask, Type}) ->
    [scalar:s(Cask), scalar:s(Type), <<"_search">>];
 search_identity([Cask], {_, Type}) ->
    [scalar:s(Cask), scalar:s(Type), <<"_search">>];
+search_identity([Cask], ?WILDCARD) ->
+   [scalar:s(Cask), <<"_search">>];
 search_identity([Cask], Type) ->
    [scalar:s(Cask), scalar:s(Type), <<"_search">>];
 search_identity([Cask, Type], _) ->
