@@ -77,11 +77,11 @@ socket(Uri) ->
 socket(Uri, Opts) ->
    case opts:val(bulk, false, Opts) of
       false ->
-         supervisor:start_child(esio_socket_sup, [uri:new(Uri), Opts]);
+         supervisor:start_child(esio_socket_sup, [esio_identity:new(Uri), Opts]);
       true  ->
-         supervisor:start_child(esio_socket_bulk_sup, [uri:new(Uri), Opts]);
+         supervisor:start_child(esio_socket_bulk_sup, [esio_identity:new(Uri), Opts]);
       bulk  ->
-         supervisor:start_child(esio_socket_bulk_sup, [uri:new(Uri), Opts])
+         supervisor:start_child(esio_socket_bulk_sup, [esio_identity:new(Uri), Opts])
    end.
 
 %%
@@ -102,8 +102,7 @@ put(Sock, Key, Val) ->
 
 put(Sock, Key, Val, Timeout)
  when is_map(Val) ->
-   Urn = {urn, ?NID, _} = uri:new(Key),
-   req(Sock, {put, Urn, jsx:encode(Val)}, Timeout).
+   req(Sock, {put, Key, jsx:encode(Val)}, Timeout).
 
 %%
 %% asynchronous put operation
@@ -115,8 +114,7 @@ put_(Sock, Key, Val) ->
 
 put_(Sock, Key, Val, Flag)
  when is_map(Val) ->
-   Urn = {urn, ?NID, _} = uri:new(Key),
-   req_(Sock, {put, Urn, jsx:encode(Val)}, Flag).
+   req_(Sock, {put, Key, jsx:encode(Val)}, Flag).
 
 
 %%
@@ -128,8 +126,7 @@ get(Sock, Key) ->
    get(Sock, Key, ?TIMEOUT).
 
 get(Sock, Key, Timeout) ->
-   Urn = {urn, ?NID, _} = uri:new(Key),
-   req(Sock, {get, Urn}, Timeout).
+   req(Sock, {get, Key}, Timeout).
 
 
 %%
@@ -141,8 +138,7 @@ get_(Sock, Key) ->
    get_(Sock, Key, true).
 
 get_(Sock, Key, Flag) ->
-   Urn = {urn, ?NID, _} = uri:new(Key),
-   req_(Sock, {get, Urn}, Flag).
+   req_(Sock, {get, Key}, Flag).
 
 
 %%
@@ -154,8 +150,7 @@ remove(Sock, Key) ->
    remove(Sock, Key, ?TIMEOUT).
 
 remove(Sock, Key, Timeout) ->
-   Urn = {urn, ?NID, _} = uri:new(Key),
-   req(Sock, {remove, Urn}, Timeout).
+   req(Sock, {remove, Key}, Timeout).
 
 
 %%
@@ -167,8 +162,7 @@ remove_(Sock, Key) ->
    remove_(Sock, Key, false).
 
 remove_(Sock, Key, Flag) ->
-   Urn = {urn, ?NID, _} = uri:new(Key),
-   req_(Sock, {remove, Urn}, Flag).
+   req_(Sock, {remove, Key}, Flag).
 
 
 %%
@@ -184,8 +178,7 @@ lookup(Sock, Uid, Query) ->
    lookup(Sock, Uid, Query, ?TIMEOUT).
 
 lookup(Sock, Uid, Query, Timeout) ->
-   Urn = {urn, ?NID, _} = uri:new(Uid),
-   req(Sock, {lookup, Urn, jsx:encode(Query)}, Timeout).
+   req(Sock, {lookup, Uid, jsx:encode(Query)}, Timeout).
 
 %%
 %% asynchronous lookup
@@ -200,8 +193,7 @@ lookup_(Sock, Uid, Query) ->
    lookup_(Sock, Uid, Query, true).
 
 lookup_(Sock, Uid, Query, Flag) ->
-   Urn = {urn, ?NID, _} = uri:new(Uid),
-   req_(Sock, {lookup, Urn, jsx:encode(Query)}, Flag).
+   req_(Sock, {lookup, Uid, jsx:encode(Query)}, Flag).
    
 
 %%
@@ -213,8 +205,7 @@ stream(Sock, Query) ->
    stream(Sock, ?WILDCARD, Query).
 
 stream(Sock, Uid, Query) ->
-   Urn = {urn, ?NID, _} = uri:new(Uid),
-   esio_stream:stream(Sock, Urn, Query).
+   esio_stream:stream(Sock, Uid, Query).
 
 %%
 %% pattern match data using elastic search boolean query
@@ -226,8 +217,7 @@ match(Sock, Pattern) ->
    match(Sock, ?WILDCARD, Pattern).
 
 match(Sock, Uid, Pattern) ->
-   Urn = {urn, ?NID, _} = uri:new(Uid),
-   esio_stream:match(Sock, Urn, Pattern).
+   esio_stream:match(Sock, Uid, Pattern).
 
 
 %%-----------------------------------------------------------------------------

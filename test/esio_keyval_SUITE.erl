@@ -54,7 +54,7 @@ groups() ->
 %%
 init_per_suite(Config) ->
    ok = esio:start(),
-   [{elastic_search_url, "http://docker:9200"},{base, uri:new("urn:es:testcask:testtype")}|Config].
+   [{elastic_search_url, "http://docker:9200"},{base, {testcask, testtype, undefined}}|Config].
 
 end_per_suite(_Config) ->
    ok.
@@ -75,7 +75,7 @@ end_per_group(_, _Config) ->
 
 put(Config) ->
    {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
-   Key1 = uri:join([put1], ?config(base, Config)),
+   Key1 = setelement(3, ?config(base, Config), put1),
    {ok, <<"put1">>} = esio:put(Sock, Key1, #{<<"val">> => 1}),
 
    %% auto id
@@ -83,11 +83,11 @@ put(Config) ->
    {ok, _} = esio:put(Sock, KeyX, #{<<"val">> => 1}),
 
    timer:sleep(100),
-   Key2 = uri:join([put2], ?config(base, Config)),
+   Key2 = setelement(3, ?config(base, Config), put2),
    ok = esio:put_(Sock, Key2, #{<<"val">> => 2}, false),
 
    timer:sleep(100),
-   Key3 = uri:join([put3], ?config(base, Config)),
+   Key3 = setelement(3, ?config(base, Config), put3),
    recv({ok, <<"put3">>}, 
       esio:put_(Sock, Key3, #{<<"val">> => 3}, true)
    ),
@@ -96,17 +96,17 @@ put(Config) ->
 
 get(Config) ->
    {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
-   Key1 = uri:join([get1], ?config(base, Config)),
+   Key1 = setelement(3, ?config(base, Config), get1),
    {ok, _} = esio:put(Sock, Key1, #{<<"val">> => 1}),
    {ok, #{<<"val">> := 1}} = esio:get(Sock, Key1),
 
    timer:sleep(100), 
-   Key2 = uri:join([get2], ?config(base, Config)),
+   Key2 = setelement(3, ?config(base, Config), get2),
    {ok, _} = esio:put(Sock, Key2, #{<<"val">> => 1}),
    ok   = esio:get_(Sock, Key2, false),
   
    timer:sleep(100),
-   Key3 = uri:join([get3], ?config(base, Config)),
+   Key3 = setelement(3, ?config(base, Config), get3),
    {ok, _} = esio:put(Sock, Key3, #{<<"val">> => 1}),
    recv({ok, #{<<"val">> => 1}},
       esio:get_(Sock, Key3, true)
@@ -117,12 +117,12 @@ get(Config) ->
 
 remove(Config) ->
    {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
-   Key1 = uri:join([rem1], ?config(base, Config)),
+   Key1 = setelement(3, ?config(base, Config), rem1),
    {ok, _} = esio:put(Sock, Key1, #{<<"val">> => 1}),
    ok   = esio:remove(Sock, Key1),
    {error, not_found} = esio:get(Sock, Key1),
 
-   Key2 = uri:join([rem2], ?config(base, Config)),
+   Key2 = setelement(3, ?config(base, Config), rem2),
    {ok, _} = esio:put(Sock, Key2, #{<<"val">> => 1}),
    ok   = esio:remove_(Sock, Key2, false),
    {error, not_found} = esio:get(Sock, Key2),
@@ -130,7 +130,7 @@ remove(Config) ->
    %%
    %% Note: looks like Linearizability issue at Elastic Search
    %% DELETE / GET are not handled properly
-   Key3 = uri:join([rem3], ?config(base, Config)),
+   Key3 = setelement(3, ?config(base, Config), rem3),
    {ok, _} = esio:put(Sock, Key3, #{<<"val">> => 1}),
    recv(ok,
       esio:remove_(Sock, Key3, true)
@@ -143,16 +143,15 @@ lookup(Config) ->
    {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
    Urn = ?config(base, Config),
 
-   {ok, _} = esio:lookup(Sock, Urn, #{'query' => #{'match_all' => #{}} }),
+   {ok, _} = esio:lookup(Sock, {testcask, testtype}, #{'query' => #{'match_all' => #{}} }),
 
    esio:close(Sock).
 
 
 stream(Config) ->
    {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
-   Urn = ?config(base, Config),
 
-   Stream  = esio:stream(Sock, Urn, #{'query' => #{'match_all' => #{}} }),
+   Stream  = esio:stream(Sock, {testcask, testtype}, #{'query' => #{'match_all' => #{}} }),
    [_ | _] = stream:list(Stream),
 
    esio:close(Sock).

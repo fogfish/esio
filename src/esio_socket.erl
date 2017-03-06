@@ -175,7 +175,7 @@ response(#{type := lookup, code := Code, pipe := Pipe}) ->
 %%
 %% 
 build_http_req(Uri, {put, Key, Val}) ->
-   Url = urn_to_cask(Uri, Key),
+   Url = esio_identity:keyval(Uri, Key),
    [
       {
          urn_to_method(Url),
@@ -194,7 +194,7 @@ build_http_req(Uri, {get, Key}) ->
    [
       {
          'GET',
-         urn_to_cask(Uri, Key),
+         esio_identity:keyval(Uri, Key),
          [
             {'Accept',  'application/json'},
             {'Connection',    'keep-alive'}
@@ -207,7 +207,7 @@ build_http_req(Uri, {remove, Key}) ->
    [
       {
          'DELETE',
-         urn_to_cask(Uri, Key),
+         esio_identity:keyval(Uri, Key),
          [
             {'Accept',  'application/json'},
             {'Connection',    'keep-alive'}
@@ -220,7 +220,7 @@ build_http_req(Uri, {lookup, Uid, Query}) ->
    [
       {
          'POST',
-         urn_to_search(Uri, Uid),
+         esio_identity:search(Uri, Uid),
          [
             {'Content-Type',  {application, json}},
             {'Transfer-Encoding', <<"chunked">>},
@@ -244,57 +244,6 @@ urn_to_method(Uri) ->
       %% /{index} (schema deployment)
       [_]       -> 'PUT'
    end.
-
-%%
-%%
-urn_to_cask(Uri, {urn, _, _} = Key) ->
-   uri:segments(
-      urn_to_cask_join(
-         uri:segments(Uri),
-         uri:segments(Key)
-      ), 
-      Uri
-   ).
-
-urn_to_cask_join(undefined, Key) ->
-   Key;
-urn_to_cask_join(Uri, Key) ->
-   {X, _} = lists:split(
-      erlang:min(length(Uri), erlang:max(3 - length(Key), 0)),
-      Uri
-   ),
-   reduce_urn(X ++ Key).
-
-reduce_urn([Cask, Type | Uid])
- when length(Uid) > 1 ->
-   [Cask, Type, iolist_to_binary(lists:join($:, Uid))];
-
-reduce_urn(Urn) ->
-   Urn.
-
-%%
-%%
-urn_to_search(Uri, {urn, _, _} = Key) ->
-   uri:segments(
-      urn_to_search_join(
-         uri:segments(Uri),
-         uri:segments(Key)
-      ), 
-      Uri
-   ).
-
-urn_to_search_join([<<"*">>], _) ->
-   [<<"_search">>];
-urn_to_search_join(_, [<<"*">>]) ->
-   [<<"_search">>];
-urn_to_search_join(undefined, Key) ->
-   Key ++ [<<"_search">>];
-urn_to_search_join(Uri, Key) ->
-   {X, _} = lists:split(
-      erlang:min(length(Uri), 2 - length(Key)),
-      Uri
-   ),
-   X ++ Key ++ [<<"_search">>].
 
 
 %%

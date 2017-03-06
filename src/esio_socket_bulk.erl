@@ -178,19 +178,9 @@ encode(Uri, Chunk) ->
    [encode(Uri, Key, Val) | encode(Uri, deq:tail(Chunk))].
 
 encode(Uri, Key, Val) ->
-   [Cask, Type, Id] = urn_join(uri:segments(Uri), uri:segments(Key)),
+   [Cask, Type, Id] = uri:segments(esio_identity:keyval(Uri, Key)),
    Head = jsx:encode(#{index => 
       #{<<"_index">> => uri:unescape(Cask), <<"_type">> => uri:unescape(Type), <<"_id">> => uri:unescape(Id)}
    }),
    <<Head/binary, $\n, Val/binary, $\n>>.
 
-%%
-%% 
-urn_join(undefined, Key) ->
-   Key;
-urn_join(Uri, Key) ->
-   {X, _} = lists:split(
-      erlang:min(length(Uri), 3 - length(Key)),
-      Uri
-   ),
-   X ++ Key.
