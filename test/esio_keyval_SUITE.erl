@@ -54,6 +54,7 @@ groups() ->
 %%
 init_per_suite(Config) ->
    ok = esio:start(),
+   lager:set_loglevel(lager_console_backend, debug),
    [{elastic_search_url, "http://docker:9200"},{base, {testcask, testtype, undefined}}|Config].
 
 end_per_suite(_Config) ->

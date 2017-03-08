@@ -10,6 +10,8 @@
 -behaviour(pipe).
 -author('dmitry.kolesnikov@zalando.fi').
 
+-include("esio.hrl").
+
 -export([
    start_link/2,
    init/1,
@@ -163,6 +165,7 @@ response(#{type := remove, code := Code, pipe := Pipe}) ->
    pipe:a(Pipe, {error, Code});
 
 response(#{type := lookup, code :=  200, pipe := Pipe, json := Json}) ->
+   ?DEBUG("esio [socket]: lookup <<< ~s", [Json]),
    #{<<"hits">> := Val} = to_json(Json),
    pipe:a(Pipe, {ok, Val});
 
@@ -217,6 +220,7 @@ build_http_req(Uri, {remove, Key}) ->
    ];
 
 build_http_req(Uri, {lookup, Uid, Query}) ->
+   ?DEBUG("esio [socket]: lookup >>> ~s", [Query]),
    [
       {
          'POST',
