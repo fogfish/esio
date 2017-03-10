@@ -22,7 +22,7 @@ To use and develop Esio, you need:
 * Erlang/OTP 18.x or later
 * Elasticsearch 2.x or later
 
-This library uses [rebar](https://github.com/rebar/rebar/wiki). Use the following code snippet to include Esio in your `rebar.config`:
+This library uses [rebar3](http://www.rebar3.org). Use the following code snippet to include Esio in your `rebar.config`:
 ```
    {esio, ".*",
       {git, "https://github.com/zalando/esio", {branch, master}}
@@ -52,21 +52,35 @@ esio:start().
 
 %%
 %% open a socket to Elastic Search
-{ok, Sock} = esio:socket("http://192.168.99.100:9200").
+{ok, Schema} = esio:socket("http://127.0.0.1:9200").
 
 %%
 %% create a new index with name `z`
-esio:put(Sock, "urn:es:z", #{settings => #{number_of_shards => 3, number_of_replicas => 1}}).
+esio:put(Schema, "z", #{settings => #{number_of_shards => 3, number_of_replicas => 1}}).
+
+%%
+%% open a socket bounded to index `z` and type `default` 
+{ok, Sock} = esio:socket("http://127.0.0.1:9200/z/default").
 
 %%
 %% put documents to `default` mapping of the index `z`
-esio:put(Sock, "urn:es:z:default:1", #{title => <<"red color">>, tags => [red]}).
-esio:put(Sock, "urn:es:z:default:2", #{title => <<"yellow color">>, tags => [yellow]}).
-esio:put(Sock, "urn:es:z:default:3", #{title => <<"green color">>, tags => [green]}).
+esio:put(Sock, "1", #{title => <<"red color">>, tags => [red]}).
+esio:put(Sock, "2", #{title => <<"yellow color">>, tags => [yellow]}).
+esio:put(Sock, "3", #{title => <<"green color">>, tags => [green]}).
+
+%%
+%% put documents to `other` mapping of the index `z`
+esio:put(Sock, {urn, other, "4"}, #{title => <<"black color">>, tags => [black]}).
+
 
 %%
 %% get document from `default` mapping of the index `z` identifiable by key `1`
-esio:get(Sock, "urn:es:z:default:1").
+esio:get(Sock, "1").
+
+%%
+%% get document for `other` mapping of the index `z`
+esio:get(Sock, {urn, other, "4"}).
+
 
 %%
 %% match a documents to a pattern  

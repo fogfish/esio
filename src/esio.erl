@@ -18,36 +18,24 @@
 ]).
 %% key/value (hash-map like interface)
 -export([
-   put/3,
-   put/4,
-   put_/3,
-   put_/4,
-   get/2,
-   get/3, 
-   get_/2, 
-   get_/3,
-   remove/2, 
-   remove/3, 
-   remove_/2, 
-   remove_/3
+   put/3, put/4, put_/3, put_/4,
+   add/2, add/3, add_/2, add_/3,
+   get/2, get/3, get_/2, get_/3,
+   remove/2, remove/3, remove_/2, remove_/3
 ]).
 %% query and stream interface
 -export([
-   lookup/2,
-   lookup/3,
-   lookup/4,
-   lookup_/2,
-   lookup_/3,
-   lookup_/4,
-   stream/2, 
-   stream/3, 
-   match/2, 
-   match/3 
+   lookup/2, lookup/3, lookup/4, lookup_/2, lookup_/3, lookup_/4,
+   stream/2, stream/3, 
+   match/2,  match/3 
 ]).
 
 %%
 %% data types
--type key()  :: uri:urn().
+-type url()  :: uri:uri().
+-type key()  :: {urn, type(), uid()} | uid().
+-type type() :: binary().
+-type uid()  :: binary().
 -type val()  :: map().
 -type req()  :: map().
 -type sock() :: pid().
@@ -58,7 +46,6 @@
 start() -> 
    applib:boot(?MODULE, []).
 
-
 %%
 %% create communication socket to Elastic Search.
 %%  Options
@@ -68,8 +55,8 @@ start() ->
 %%   * n         - number of messages to buffer in bulk request 
 %%   * t         - timeout to flush bulk request buffer
 %%
--spec socket(uri:uri()) -> {ok, sock()} | {error, _}.
--spec socket(uri:uri(), [_]) -> {ok, sock()} | {error, _}.
+-spec socket(url()) -> {ok, sock()} | {error, _}.
+-spec socket(url(), [_]) -> {ok, sock()} | {error, _}.
 
 socket(Uri) ->
    socket(Uri, []).
@@ -77,11 +64,11 @@ socket(Uri) ->
 socket(Uri, Opts) ->
    case opts:val(bulk, false, Opts) of
       false ->
-         supervisor:start_child(esio_socket_sup, [esio_identity:new(Uri), Opts]);
+         supervisor:start_child(esio_socket_sup, [uri:new(Uri), Opts]);
       true  ->
-         supervisor:start_child(esio_socket_bulk_sup, [esio_identity:new(Uri), Opts]);
+         supervisor:start_child(esio_socket_bulk_sup, [uri:new(Uri), Opts]);
       bulk  ->
-         supervisor:start_child(esio_socket_bulk_sup, [esio_identity:new(Uri), Opts])
+         supervisor:start_child(esio_socket_bulk_sup, [uri:new(Uri), Opts])
    end.
 
 %%
@@ -92,6 +79,7 @@ socket(Uri, Opts) ->
 close(Sock) ->
    pipe:send(Sock, close).
 
+
 %%
 %% synchronous put operation
 -spec put(sock(), key(), val()) -> {ok, _} | {error, _}.
@@ -100,9 +88,9 @@ close(Sock) ->
 put(Sock, Key, Val) ->
    put(Sock, Key, Val, ?TIMEOUT).
 
-put(Sock, Key, Val, Timeout)
- when is_map(Val) ->
-   req(Sock, {put, Key, jsx:encode(Val)}, Timeout).
+put(Sock, Key, Val, Timeout) ->
+   req(Sock, {put, identity(Key), jsx:encode(Val)}, Timeout).
+
 
 %%
 %% asynchronous put operation
@@ -112,9 +100,32 @@ put(Sock, Key, Val, Timeout)
 put_(Sock, Key, Val) ->
    put_(Sock, Key, Val, false).
 
-put_(Sock, Key, Val, Flag)
- when is_map(Val) ->
-   req_(Sock, {put, Key, jsx:encode(Val)}, Flag).
+put_(Sock, Key, Val, Flag) ->
+   req_(Sock, {put, identity(Key), jsx:encode(Val)}, Flag).
+
+
+%%
+%%
+-spec add(sock(), val()) -> {ok, _} | {error, _}.
+-spec add(sock(), val(), timeout()) -> {ok, _} | {error, _}.
+
+add(Sock, Val) ->
+   add(Sock, Val, ?TIMEOUT).
+
+add(Sock, Val, Timeout) ->
+   req(Sock, {add, jsx:encode(Val)}, Timeout).
+
+
+%%
+%% asynchronous add operation
+-spec add_(sock(), val()) -> ok.
+-spec add_(sock(), val(), boolean()) -> ok | reference().
+
+add_(Sock, Val) ->
+   add_(Sock, Val, false).
+
+add_(Sock, Val, Flag) ->
+   req_(Sock, {add, jsx:encode(Val)}, Flag).
 
 
 %%
@@ -126,7 +137,7 @@ get(Sock, Key) ->
    get(Sock, Key, ?TIMEOUT).
 
 get(Sock, Key, Timeout) ->
-   req(Sock, {get, Key}, Timeout).
+   req(Sock, {get, identity(Key)}, Timeout).
 
 
 %%
@@ -138,7 +149,7 @@ get_(Sock, Key) ->
    get_(Sock, Key, true).
 
 get_(Sock, Key, Flag) ->
-   req_(Sock, {get, Key}, Flag).
+   req_(Sock, {get, identity(Key)}, Flag).
 
 
 %%
@@ -150,7 +161,7 @@ remove(Sock, Key) ->
    remove(Sock, Key, ?TIMEOUT).
 
 remove(Sock, Key, Timeout) ->
-   req(Sock, {remove, Key}, Timeout).
+   req(Sock, {remove, identity(Key)}, Timeout).
 
 
 %%
@@ -162,7 +173,7 @@ remove_(Sock, Key) ->
    remove_(Sock, Key, false).
 
 remove_(Sock, Key, Flag) ->
-   req_(Sock, {remove, Key}, Flag).
+   req_(Sock, {remove, identity(Key)}, Flag).
 
 
 %%
@@ -178,7 +189,7 @@ lookup(Sock, Uid, Query) ->
    lookup(Sock, Uid, Query, ?TIMEOUT).
 
 lookup(Sock, Uid, Query, Timeout) ->
-   req(Sock, {lookup, Uid, jsx:encode(Query)}, Timeout).
+   req(Sock, {lookup, identity(Uid), jsx:encode(Query)}, Timeout).
 
 %%
 %% asynchronous lookup
@@ -193,7 +204,7 @@ lookup_(Sock, Uid, Query) ->
    lookup_(Sock, Uid, Query, true).
 
 lookup_(Sock, Uid, Query, Flag) ->
-   req_(Sock, {lookup, Uid, jsx:encode(Query)}, Flag).
+   req_(Sock, {lookup, identity(Uid), jsx:encode(Query)}, Flag).
    
 
 %%
@@ -204,8 +215,9 @@ lookup_(Sock, Uid, Query, Flag) ->
 stream(Sock, Query) ->
    stream(Sock, ?WILDCARD, Query).
 
-stream(Sock, Uid, Query) ->
-   esio_stream:stream(Sock, Uid, Query).
+stream(Sock, Uid, Query)
+ when is_map(Query) ->
+   esio_stream:stream(Sock, identity(Uid), Query).
 
 %%
 %% pattern match data using elastic search boolean query
@@ -216,8 +228,9 @@ stream(Sock, Uid, Query) ->
 match(Sock, Pattern) ->
    match(Sock, ?WILDCARD, Pattern).
 
-match(Sock, Uid, Pattern) ->
-   esio_stream:match(Sock, Uid, Pattern).
+match(Sock, Uid, Pattern)
+ when is_map(Pattern) ->
+   esio_stream:match(Sock, identity(Uid), Pattern).
 
 
 %%-----------------------------------------------------------------------------
@@ -238,5 +251,12 @@ req_(Sock, Req, true) ->
 
 req_(Sock, Req, false) ->
    pipe:send(Sock, Req), ok.
+
+%%
+%%
+identity({urn, Type, Key}) ->
+   {urn, scalar:s(Type), scalar:s(Key)};
+identity(Key) ->
+   {urn, undefined, scalar:s(Key)}.
 
 

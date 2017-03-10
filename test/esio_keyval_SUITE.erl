@@ -16,10 +16,12 @@
   ,init_per_group/2 ,end_per_group/2
 ]).
 -export([
-   put/1, get/1, remove/1, lookup/1
-]).
--export([
-   stream/1
+   schema/1,
+   put_cask_url/1, put_type_url/1,
+   add_cask_url/1, add_type_url/1,
+   get_cask_url/1, get_type_url/1,
+   rem_cask_url/1, rem_type_url/1,
+   lookup/1, stream/1
 ]).
 
 %%%----------------------------------------------------------------------------   
@@ -37,10 +39,14 @@ all() ->
 groups() ->
    [
       {keyval, [parallel], [
-         put, get, remove, lookup
+         schema, 
+         put_cask_url, put_type_url,
+         add_cask_url, add_type_url,
+         get_cask_url, get_type_url,
+         rem_cask_url, rem_type_url
       ]},
       {stream, [parallel], [
-         stream
+         lookup, stream
       ]}
    ].
 
@@ -55,7 +61,12 @@ groups() ->
 init_per_suite(Config) ->
    ok = esio:start(),
    lager:set_loglevel(lager_console_backend, debug),
-   [{elastic_search_url, "http://docker:9200"},{base, {testcask, testtype, undefined}}|Config].
+   [
+      {elastic_url_base, "http://docker:9200"}
+     ,{elastic_url_cask, "http://docker:9200/testcask"}
+     ,{elastic_url_type, "http://docker:9200/testcask/testtype"}
+     |Config
+   ].
 
 end_per_suite(_Config) ->
    ok.
@@ -74,84 +85,183 @@ end_per_group(_, _Config) ->
 %%%
 %%%----------------------------------------------------------------------------   
 
-put(Config) ->
-   {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
-   Key1 = setelement(3, ?config(base, Config), put1),
-   {ok, <<"put1">>} = esio:put(Sock, Key1, #{<<"val">> => 1}),
-
-   %% auto id
-   KeyX = ?config(base, Config),
-   {ok, _} = esio:put(Sock, KeyX, #{<<"val">> => 1}),
-
-   timer:sleep(100),
-   Key2 = setelement(3, ?config(base, Config), put2),
-   ok = esio:put_(Sock, Key2, #{<<"val">> => 2}, false),
-
-   timer:sleep(100),
-   Key3 = setelement(3, ?config(base, Config), put3),
-   recv({ok, <<"put3">>}, 
-      esio:put_(Sock, Key3, #{<<"val">> => 3}, true)
-   ),
+%%
+%%
+schema(Config) ->
+   {ok, Sock} = esio:socket( ?config(elastic_url_base, Config) ),
+   ok = esio:put(Sock, <<"a">>, #{}),
+   ok = esio:remove(Sock, <<"a">>),
    esio:close(Sock).
+      
+%%
+%%
+put_cask_url(Config) ->
+   {ok, Sock} = esio:socket( ?config(elastic_url_cask, Config) ),
 
+   Key001 = uri:new(<<"urn:testcask:001">>),   
+   {ok, <<"001">>} = esio:put(Sock, Key001, #{<<"val">> => <<"001">>}),
 
-get(Config) ->
-   {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
-   Key1 = setelement(3, ?config(base, Config), get1),
-   {ok, _} = esio:put(Sock, Key1, #{<<"val">> => 1}),
-   {ok, #{<<"val">> := 1}} = esio:get(Sock, Key1),
+   Key002 = uri:new(<<"urn:testcask:002">>),
+   ok = esio:put_(Sock, Key002, #{<<"val">> => <<"002">>}, false),
 
-   timer:sleep(100), 
-   Key2 = setelement(3, ?config(base, Config), get2),
-   {ok, _} = esio:put(Sock, Key2, #{<<"val">> => 1}),
-   ok   = esio:get_(Sock, Key2, false),
-  
-   timer:sleep(100),
-   Key3 = setelement(3, ?config(base, Config), get3),
-   {ok, _} = esio:put(Sock, Key3, #{<<"val">> => 1}),
-   recv({ok, #{<<"val">> => 1}},
-      esio:get_(Sock, Key3, true)
-   ),
+   Key003 = uri:new(<<"urn:testcask:003">>),
+   {ok, <<"003">>} = recv(esio:put_(Sock, Key003, #{<<"val">> => <<"003">>}, true)),
 
    esio:close(Sock).
 
+%%
+%%
+put_type_url(Config) ->
+   {ok, Sock} = esio:socket( ?config(elastic_url_type, Config) ),
 
-remove(Config) ->
-   {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
-   Key1 = setelement(3, ?config(base, Config), rem1),
-   {ok, _} = esio:put(Sock, Key1, #{<<"val">> => 1}),
-   ok   = esio:remove(Sock, Key1),
-   {error, not_found} = esio:get(Sock, Key1),
+   Key004 = uri:new(<<"urn:testcask:004">>),   
+   {ok, <<"004">>} = esio:put(Sock, Key004, #{<<"val">> => <<"004">>}),
 
-   Key2 = setelement(3, ?config(base, Config), rem2),
-   {ok, _} = esio:put(Sock, Key2, #{<<"val">> => 1}),
-   ok   = esio:remove_(Sock, Key2, false),
-   {error, not_found} = esio:get(Sock, Key2),
+   Key005 = uri:new(<<"urn:testcask:005">>),
+   ok = esio:put_(Sock, Key005, #{<<"val">> => <<"005">>}, false),
 
-   %%
-   %% Note: looks like Linearizability issue at Elastic Search
-   %% DELETE / GET are not handled properly
-   Key3 = setelement(3, ?config(base, Config), rem3),
-   {ok, _} = esio:put(Sock, Key3, #{<<"val">> => 1}),
-   recv(ok,
-      esio:remove_(Sock, Key3, true)
-   ),
-   {error, not_found} = esio:get(Sock, Key3),
+   Key006 = uri:new(<<"urn:testcask:006">>),
+   {ok, <<"006">>} = recv(esio:put_(Sock, Key006, #{<<"val">> => <<"006">>}, true)),
+
+   Key007 = <<"007">>,   
+   {ok, <<"007">>} = esio:put(Sock, Key007, #{<<"val">> => <<"007">>}),
+
+   Key008 = <<"008">>,
+   ok = esio:put_(Sock, Key008, #{<<"val">> => <<"008">>}, false),
+
+   Key009 = <<"009">>,
+   {ok, <<"009">>} = recv(esio:put_(Sock, Key009, #{<<"val">> => <<"009">>}, true)),
 
    esio:close(Sock).
+
+%%
+%%
+add_cask_url(Config) ->
+   {ok, Sock} = esio:socket( ?config(elastic_url_cask, Config) ),
+
+   {error, _} = esio:add(Sock, #{<<"val">> => <<"010">>}),
+
+   ok = esio:add_(Sock, #{<<"val">> => <<"011">>}, false),
+
+   {error, _} = recv(esio:add_(Sock, #{<<"val">> => <<"012">>}, true)),
+
+   esio:close(Sock).
+
+
+%%
+%%
+add_type_url(Config) ->
+   {ok, Sock} = esio:socket( ?config(elastic_url_type, Config) ),
+
+   {ok, _} = esio:add(Sock, #{<<"val">> => <<"013">>}),
+
+   ok = esio:add_(Sock, #{<<"val">> => <<"014">>}, false),
+
+   {ok, _} = recv(esio:add_(Sock, #{<<"val">> => <<"015">>}, true)),
+
+   esio:close(Sock).
+
+
+%%
+%%
+get_cask_url(Config) ->
+   {ok, Sock} = esio:socket( ?config(elastic_url_cask, Config) ),
+
+   {error, not_found} = esio:get(Sock, uri:new(<<"urn:testcask:xxx">>)),
+
+   Key016 = uri:new(<<"urn:testcask:016">>),   
+   {ok, <<"016">>} = esio:put(Sock, Key016, #{<<"val">> => <<"016">>}),
+   {ok, #{<<"val">> := <<"016">>}} = esio:get(Sock, Key016),
+
+   Key017 = uri:new(<<"urn:testcask:017">>),
+   ok = esio:put_(Sock, Key017, #{<<"val">> => <<"017">>}, false),
+   {ok, #{<<"val">> := <<"017">>}} = esio:get(Sock, Key017),
+
+   Key018 = uri:new(<<"urn:testcask:018">>),
+   {ok, <<"018">>} = recv(esio:put_(Sock, Key018, #{<<"val">> => <<"018">>}, true)),
+   {ok, #{<<"val">> := <<"018">>}} = esio:get(Sock, Key018),
+
+   esio:close(Sock).
+
+%%
+%%
+get_type_url(Config) ->
+   {ok, Sock} = esio:socket( ?config(elastic_url_type, Config) ),
+
+   {error, not_found} = esio:get(Sock, <<"xxx">>),
+
+   Key019 = <<"019">>,   
+   {ok, <<"019">>} = esio:put(Sock, Key019, #{<<"val">> => <<"019">>}),
+   {ok, #{<<"val">> := <<"019">>}} = esio:get(Sock, Key019),
+
+   Key020 = <<"020">>,
+   ok = esio:put_(Sock, Key020, #{<<"val">> => <<"020">>}, false),
+   {ok, #{<<"val">> := <<"020">>}} = esio:get(Sock, Key020),
+
+   Key021 = <<"021">>,
+   {ok, <<"021">>} = recv(esio:put_(Sock, Key021, #{<<"val">> => <<"021">>}, true)),
+   {ok, #{<<"val">> := <<"021">>}} = esio:get(Sock, Key021),
+
+   esio:close(Sock).
+
+
+%%
+%%
+rem_cask_url(Config) ->
+   {ok, Sock} = esio:socket( ?config(elastic_url_cask, Config) ),
+
+   Key022 = uri:new(<<"urn:testcask:022">>),   
+   {ok, <<"022">>} = esio:put(Sock, Key022, #{<<"val">> => <<"022">>}),
+   ok = esio:remove(Sock, Key022),
+   {error, not_found} = esio:get(Sock, Key022),
+
+   Key023 = uri:new(<<"urn:testcask:023">>),
+   ok = esio:put_(Sock, Key023, #{<<"val">> => <<"023">>}, false),
+   ok = esio:remove(Sock, Key023),
+   {error, not_found} = esio:get(Sock, Key023),
+
+   Key024 = uri:new(<<"urn:testcask:024">>),
+   {ok, <<"024">>} = recv(esio:put_(Sock, Key024, #{<<"val">> => <<"024">>}, true)),
+   ok = esio:remove(Sock, Key024),
+   {error, not_found} = esio:get(Sock, Key024),
+
+   esio:close(Sock).
+
+%%
+%%
+rem_type_url(Config) ->
+   {ok, Sock} = esio:socket( ?config(elastic_url_type, Config) ),
+
+   Key025 = <<"025">>,   
+   {ok, <<"025">>} = esio:put(Sock, Key025, #{<<"val">> => <<"025">>}),
+   ok = esio:remove(Sock, Key025),
+   {error, not_found} = esio:get(Sock, Key025),
+
+   Key026 = <<"026">>,
+   ok = esio:put_(Sock, Key026, #{<<"val">> => <<"026">>}, false),
+   ok = esio:remove(Sock, Key026),
+   {error, not_found} = esio:get(Sock, Key026),
+
+   Key027 = <<"027">>,
+   {ok, <<"027">>} = recv(esio:put_(Sock, Key027, #{<<"val">> => <<"027">>}, true)),
+   ok = esio:remove(Sock, Key027),
+   {error, not_found} = esio:get(Sock, Key027),
+
+   esio:close(Sock).
+
 
 lookup(Config) ->
-   {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
+   {ok, Sock} = esio:socket( ?config(elastic_url_cask, Config) ),
 
-   {ok, _} = esio:lookup(Sock, {testcask, testtype}, #{'query' => #{'match_all' => #{}} }),
+   {ok, _} = esio:lookup(Sock, #{'query' => #{'match_all' => #{}} }),
 
    esio:close(Sock).
 
 
 stream(Config) ->
-   {ok, Sock} = esio:socket( ?config(elastic_search_url, Config) ),
+   {ok, Sock} = esio:socket( ?config(elastic_url_cask, Config) ),
 
-   Stream  = esio:stream(Sock, {testcask, testtype}, #{'query' => #{'match_all' => #{}} }),
+   Stream  = esio:stream(Sock, #{'query' => #{'match_all' => #{}} }),
    [_ | _] = stream:list(Stream),
 
    esio:close(Sock).
@@ -163,10 +273,12 @@ stream(Config) ->
 %%%
 %%%----------------------------------------------------------------------------   
 
-recv(Msg, Ref) ->
+%%
+%%
+recv(Ref) ->
    receive
       {Ref, Msg} ->
-         ok
+         Msg
    after 5000 ->
       exit(timeout)
    end.

@@ -11,7 +11,7 @@
 
 %%
 %% wild-card urn, matches any indexes
--define(WILDCARD, <<"*">>).
+-define(WILDCARD, {urn, default, <<"_search">>}).
 
 %%
 %% number of elements to read
