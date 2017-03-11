@@ -62,9 +62,9 @@ init_per_suite(Config) ->
    ok = esio:start(),
    lager:set_loglevel(lager_console_backend, debug),
    [
-      {elastic_url_base, "http://docker:9200"}
-     ,{elastic_url_cask, "http://docker:9200/testcask"}
-     ,{elastic_url_type, "http://docker:9200/testcask/testtype"}
+      {elastic_url_base, "http://127.0.0.1:9200"}
+     ,{elastic_url_cask, "http://127.0.0.1:9200/testcask"}
+     ,{elastic_url_type, "http://127.0.0.1:9200/testcask/testtype"}
      |Config
    ].
 
