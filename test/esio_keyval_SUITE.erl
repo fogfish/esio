@@ -89,8 +89,12 @@ end_per_group(_, _Config) ->
 %%
 schema(Config) ->
    {ok, Sock} = esio:socket( ?config(elastic_url_base, Config) ),
-   ok = esio:put(Sock, <<"a">>, #{}),
-   ok = esio:remove(Sock, <<"a">>),
+   ok = esio:put(Sock, <<"/a">>, #{}),
+   ok = esio:remove(Sock, <<"/a">>),
+
+   {error, {badkey, _}} = esio:put(Sock, <<"xxx">>, #{}),
+   {error, {badkey, _}} = esio:put(Sock, {urn, <<"xxx">>, <<"xxx">>}, #{}),
+
    esio:close(Sock).
       
 %%
@@ -106,6 +110,8 @@ put_cask_url(Config) ->
 
    Key003 = uri:new(<<"urn:testcask:003">>),
    {ok, <<"003">>} = recv(esio:put_(Sock, Key003, #{<<"val">> => <<"003">>}, true)),
+
+   {error, {badkey, _}} = esio:put(Sock, <<"xxx">>, #{<<"val">> => <<"xxx">>}),
 
    esio:close(Sock).
 

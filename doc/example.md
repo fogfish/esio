@@ -43,8 +43,8 @@ esio:put(Schema, "test",
 ## define mapping to existed index
 
 ```
-{ok, Schema} = esio:socket("http://127.0.0.1:9200/test").
-esio:put(Schema, {urn, "_mappings", "type2"}, 
+{ok, Schema} = esio:socket("http://127.0.0.1:9200).
+esio:put(Schema, "/test/_mappings/type2"}, 
    #{
       properties => #{
          field2 => #{type => keyword}

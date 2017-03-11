@@ -270,28 +270,28 @@ http_lookup_return([{Code, _, _, _}|_]) ->
 
 %%
 %%
-identity_key(Uri, {urn, undefined, Key}) ->
-   case uri:segments(Uri) of
-      undefined ->
-         {ok, uri:s(uri:segments([Key], Uri))};
-      [Cask, Type | _] -> 
-         {ok, uri:s(uri:segments([Cask, Type, Key], Uri))};
-      [Cask | _] -> 
-         {ok, uri:s(uri:segments([Cask, Key], Uri))};
-      [] ->
-         {ok, uri:s(uri:segments([Key], Uri))}
-   end;
+identity_key(Uri, Key) ->
+   identity_key(segments(Uri), Uri, Key).
 
-identity_key(Uri, {urn, Type, Key}) ->
-   case uri:segments(Uri) of
-      undefined ->
-         {ok, uri:s(uri:segments([Type, Key], Uri))};
-      [Cask | _] -> 
-         {ok, uri:s(uri:segments([Cask, Type, Key], Uri))};
-      [] ->
-         {ok, uri:s(uri:segments([Type, Key], Uri))}
-   end.
+identity_key([], Uri, {urn, undefined, <<$/, _/binary>> = Key}) ->
+   % socket is not bound to index, ONLY absolute key is accepted
+   {ok, uri:s(uri:path(Key, Uri))};
 
+identity_key([Cask], Uri, {urn, Type, Key})
+ when Type =/= undefined ->
+   % socket is bound to index, ONLY `urn()` key is supported
+   {ok, uri:s(uri:segments([Cask, Type, Key], Uri))};
+
+identity_key([Cask, Type], Uri, {urn, undefined, Key}) ->
+   % socket is bound to index and type
+   {ok, uri:s(uri:segments([Cask, Type, Key], Uri))};
+
+identity_key([Cask, _], Uri, {urn, Type, Key}) ->
+   % socket is bound to index and type but `urn()` format of key overrides it
+   {ok, uri:s(uri:segments([Cask, Type, Key], Uri))};
+
+identity_key(_, _, Key) ->
+   {error, {badkey, Key}}.
 
 %%
 %%
@@ -305,28 +305,30 @@ identity_type(Uri) ->
 
 %%
 %%
-identity_lookup(Uri, ?WILDCARD) ->
-   case uri:segments(Uri) of
-      [Cask] ->
-         {ok, uri:s(uri:segments([Cask, <<"_search">>], Uri))};
-      [Cask, Type|_] ->
-         {ok, uri:s(uri:segments([Cask, Type, <<"_search">>], Uri))};
-      Path ->
-         {error, {badkey, Path}}
-   end;
+identity_lookup(Uri, Key) ->
+   identity_lookup(segments(Uri), Uri, Key).
 
-identity_lookup(Uri, {urn, Type, _}) ->
+identity_lookup([], Uri,  {urn, _, <<"_search">>}) ->
+   {ok, uri:s(uri:segments([<<"_search">>], Uri))};
+identity_lookup([], Uri, {urn, Cask, Type}) ->
+   {ok, uri:s(uri:segments([Cask, Type, <<"_search">>], Uri))};
+ 
+identity_lookup([Cask], Uri, {urn, _, <<"_search">>}) ->
+   {ok, uri:s(uri:segments([Cask, <<"_search">>], Uri))};
+identity_lookup([Cask], Uri, {urn, _, Type}) ->
+   {ok, uri:s(uri:segments([Cask, Type, <<"_search">>], Uri))};
+identity_lookup([Cask, Type], Uri, _) ->
+   {ok, uri:s(uri:segments([Cask, Type, <<"_search">>], Uri))};
+identity_lookup(_, _, Key) ->
+   {error, {badkey, Key}}.
+
+
+%%
+%%
+segments(Uri) ->
    case uri:segments(Uri) of
-      [Cask|_] ->
-         {ok, uri:s(uri:segments([Cask, Type, <<"_search">>], Uri))};
-      Path ->
-         {error, {badkey, join(Path, Type)}}
+      undefined ->
+         [];
+      Segments ->
+         Segments 
    end.
-
-%%
-%%
-join(undefined, B) ->
-   [B];
-join(A, B) ->
-   A ++ [B].
-
