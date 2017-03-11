@@ -5,7 +5,7 @@
 Esio is an Erlang library that provides an HTTP client for [Elasticsearch](https://www.elastic.co/products/elasticsearch), which offers a sophisticated [RESTful API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs.html). It implements a data access layer for Erlang applications and makes data and objects semantic-friendly with Erlang. 
 
 Unlike other, similar projects, Esio does not aim to provide a generic HTTP-proxy approach, but instead: 
-* uses an urn-base schema to resolve identity crises and the hierarchical nature of index/type/key notation
+* uses an strict identity schema to resolve naming crises and the hierarchical nature of index/type/key notation
 * offers query templates to counter the complexity of DSL 
 * uses Actor models for data streaming
 * provides Erlang-friendly pattern matching  
@@ -100,6 +100,14 @@ See our [contribution guidelines](doc/contribution.md) for details on how to sub
 ### Contact
 
 * email: dmitry.kolesnikov@zalando.fi
+
+### Changelog
+
+The library uses [semantic versions](http://semver.org) to identify stable releases. 
+ 
+* [1.0.0](https://github.com/zalando/esio) - improved identity schema and Elastic Search 5.x integration, not compatible with version 0.1.x
+* [0.1.3](https://github.com/zalando/esio/releases/tag/0.1.3) - stable elastic search i/o
+  
 
 ### License
 
