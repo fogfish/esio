@@ -54,7 +54,7 @@ unfold(#{state := [], q := #{from := From}} = Seed)
 unfold(#{state := [H|T], score := null} = Seed) ->
    {H, Seed#{state := T}};
 unfold(#{state := [#{<<"_score">> := Score} = H|T], score := Base} = Seed) ->
-   {H#{<<"_score">> := Score / Base}, Seed#{state := T}}. 
+   {H#{<<"_score">> := maybe_div(Score, Base)}, Seed#{state := T}}. 
 
 %%
 %%
@@ -70,3 +70,11 @@ pattern_to_query(Pattern) ->
          #{must => [#{match => maps:put(Key, Val, #{})} || {Key, Val} <- maps:to_list(Pattern)] }
       }
    }.
+
+%%
+%%
+maybe_div(Score, Base)
+ when Base > 0 ->
+   Score / Base;
+maybe_div(Score, _) ->
+   Score.

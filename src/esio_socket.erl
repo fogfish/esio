@@ -8,7 +8,12 @@
 %%   Elastic Search REST API socket
 -module(esio_socket).
 -behaviour(pipe).
+-compile({parse_transform, category}).
+-compile({parse_transform, monad}).
+
 -author('dmitry.kolesnikov@zalando.fi').
+
+-include("esio.hrl").
 
 -export([
    start_link/2,
@@ -28,19 +33,15 @@ start_link(Uri, Opts) ->
    pipe:start_link(?MODULE, [Uri, Opts], []).   
 
 init([Uri, Opts]) ->
-   erlang:process_flag(trap_exit, true),
-   Sock = knet:socket(Uri, Opts),
    {ok, handle, 
       #{
-         sock => Sock, 
          uri  => Uri, 
-         opts => Opts,
-         req  => deq:new()
+         opts => Opts
       }
    }.
 
-free(_, #{sock := Sock}) ->
-   knet:close(Sock).
+free(_, _) ->
+   ok.
 
 %%-----------------------------------------------------------------------------
 %%
@@ -48,69 +49,64 @@ free(_, #{sock := Sock}) ->
 %%
 %%-----------------------------------------------------------------------------
 
-%%
-%% client requests
-handle({put, _, _} = Put, Pipe, #{sock := Sock, uri := Uri, req := Req} = State) ->
-   request(Sock, build_http_req(Uri, Put)),
-   {next_state, handle, 
-      State#{req => deq:enq(#{type => put, pipe => Pipe}, Req)}
-   };   
-
-handle({get, _} = Get, Pipe, #{sock := Sock, uri := Uri, req := Req} = State) ->
-   request(Sock, build_http_req(Uri, Get)),
-   {next_state, handle, 
-      State#{req => deq:enq(#{type => get, pipe => Pipe}, Req)}
+handle({put, Key, Val}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
+   {next_state, handle,
+      http_return(Pipe, State0,
+         [$^ ||
+            identity_key(Uri, Key),
+            http_put(_, Val, Opts),
+            http_run(_, State0)
+         ]
+      )
    };
 
-handle({remove, _} = Remove, Pipe, #{sock := Sock, uri := Uri, req := Req} = State) ->
-   request(Sock, build_http_req(Uri, Remove)),
-   {next_state, handle, 
-      State#{req => deq:enq(#{type => remove, pipe => Pipe}, Req)}
+handle({add, Val}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
+   {next_state, handle,
+      http_return(Pipe, State0, 
+         [$^ ||
+            identity_type(Uri),
+            http_add(_, Val, Opts),
+            http_run(_, State0)
+         ]
+      )
    };
 
-handle({lookup, _, _} = Lookup, Pipe, #{sock := Sock, uri := Uri, req := Req} = State) ->
-   request(Sock, build_http_req(Uri, Lookup)),
-   {next_state, handle, 
-      State#{req => deq:enq(#{type => lookup, pipe => Pipe}, Req)}
+handle({get, Key}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
+   {next_state, handle,
+      http_return(Pipe, State0,
+         [$^ ||
+            identity_key(Uri, Key),
+            http_get(_, Opts),
+            http_run(_, State0)
+         ]
+      )
    };
 
-%%
-%% socket is terminated 
-handle({sidedown, b, normal}, _, #{uri := Uri, opts := Opts, req := Req} = State) ->
-   lists:foreach(
-      fun(#{pipe := Pipe}) -> pipe:a(Pipe, {error, 503}) end,
-      deq:list(Req)
-   ),
-   Sock = knet:socket(Uri, Opts),
-   {next_state, handle, 
-      State#{sock => Sock}
+
+handle({remove, Key}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
+   {next_state, handle,
+      http_return(Pipe, State0,
+         [$^ ||
+            identity_key(Uri, Key),
+            http_remove(_, Opts),
+            http_run(_, State0)
+         ]
+      )
    };
 
-handle({sidedown, b, Reason}, _, State) ->
-   {stop, Reason, State};
+handle({lookup, Uid, Query}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
+   {next_state, handle,
+      http_return(Pipe, State0,
+         [$^ ||
+            identity_lookup(Uri, Uid),
+            http_lookup(_, Query, Opts),
+            http_run(_, State0)
+         ]
+      )
+   };
 
 handle(close, _, State) ->
-   {stop, normal, State};
-
-%%
-%% elastic search response
-handle({http, _Sock, {Code, _Text, _Head, _Env}}, _Pipe, #{req := Req} = State) ->
-   Head = deq:head(Req),
-   {next_state, handle, 
-      State#{req => deq:poke(Head#{code => Code, json => []}, deq:tail(Req))}
-   };
-
-handle({http, _Sock,  eof}, _Pipe, #{req := Req} = State) ->
-   response(deq:head(Req)),
-   {next_state, handle, 
-      State#{req => deq:tail(Req)}
-   };
-
-handle({http, _Sock, Pack}, _Pipe, #{req := Req} = State) ->
-   #{json := Json} = Head = deq:head(Req),
-   {next_state, handle, 
-      State#{req => deq:poke(Head#{json => [Pack|Json]}, deq:tail(Req))}
-   }.
+   {stop, normal, State}.
 
 
 %%%----------------------------------------------------------------------------   
@@ -120,189 +116,219 @@ handle({http, _Sock, Pack}, _Pipe, #{req := Req} = State) ->
 %%%----------------------------------------------------------------------------   
 
 %%
-%% stream request to elastic search
-request(Sock, Packets) ->
-   lists:foreach(
-      fun(X) ->
-         knet:send(Sock, X)
-      end,
-      Packets
-   ).
-
 %%
-%% stream response to client
-response(#{type := put, code := Code, pipe := Pipe, json := Json})
- when Code >= 200, Code < 300 ->
-   %% TODO: how to handle meta-data about key (e.g. created and version)?
-   %%   <<"{\"_index\":\"a\",\"_type\":\"b\",\"_id\":\"1\",\"_version\":1,\"created\":true}">>
-   case to_json(Json) of
-      #{<<"_id">> := Id} -> 
-         pipe:a(Pipe, {ok, Id});
-      _ -> 
-         pipe:a(Pipe, ok)
-   end;
-
-response(#{type := put, code := Code, pipe := Pipe}) ->
-   pipe:a(Pipe, {error, Code});
-
-response(#{type := get, code :=  200, pipe := Pipe, json := Json}) ->
-   #{<<"_source">> := Val} = to_json(Json),
-   pipe:a(Pipe, {ok, Val});
-
-response(#{type := get, code := 404, pipe := Pipe}) ->
-   pipe:a(Pipe, {error, not_found});
-
-response(#{type := get, code := Code, pipe := Pipe}) ->
-   pipe:a(Pipe, {error, Code});
-
-response(#{type := remove, code := Code, pipe := Pipe})
- when Code >= 200, Code < 300 orelse Code =:= 404 ->
-   pipe:a(Pipe, ok);
-
-response(#{type := remove, code := Code, pipe := Pipe}) ->
-   pipe:a(Pipe, {error, Code});
-
-response(#{type := lookup, code :=  200, pipe := Pipe, json := Json}) ->
-   #{<<"hits">> := Val} = to_json(Json),
-   pipe:a(Pipe, {ok, Val});
-
-response(#{type := lookup, code := Code, pipe := Pipe}) ->
-   pipe:a(Pipe, {error, Code}).
-
-
-
-
-%%
-%% 
-build_http_req(Uri, {put, Key, Val}) ->
-   Url = urn_to_cask(Uri, Key),
-   [
-      {
-         urn_to_method(Url),
-         Url,
-         [
-            {'Content-Type',  {application, json}},
-            {'Transfer-Encoding', <<"chunked">>},
-            {'Connection',     'keep-alive'}
-         ]
-      },
-      Val,
-      eof
-   ];
-
-build_http_req(Uri, {get, Key}) ->
-   [
-      {
-         'GET',
-         urn_to_cask(Uri, Key),
-         [
-            {'Accept',  'application/json'},
-            {'Connection',    'keep-alive'}
-         ]
-      },
-      eof
-   ];
-
-build_http_req(Uri, {remove, Key}) ->
-   [
-      {
-         'DELETE',
-         urn_to_cask(Uri, Key),
-         [
-            {'Accept',  'application/json'},
-            {'Connection',    'keep-alive'}
-         ]
-      },
-      eof
-   ];
-
-build_http_req(Uri, {lookup, Uid, Query}) ->
-   [
-      {
-         'POST',
-         urn_to_search(Uri, Uid),
-         [
-            {'Content-Type',  {application, json}},
-            {'Transfer-Encoding', <<"chunked">>},
-            {'Connection',     'keep-alive'}
-         ]
-      },
-      Query,
-      eof
+to_json(Pckt) ->
+   [$.||
+      erlang:iolist_to_binary(Pckt),
+      jsx:decode(_, [return_maps])
    ].
 
 %%
 %%
-urn_to_method(Uri) ->
+http_run(Http, State) ->
+   {ok, Http(State)}.
+
+%%
+%%
+http_return(Pipe, _, {ok, [Result | State]}) -> 
+   pipe:a(Pipe, Result),
+   State;
+
+http_return(Pipe, State, {error, _} = Error) ->
+   pipe:a(Pipe, Error),
+   State.
+
+
+%%
+%%
+http_put(Uri, Val, Opts) ->
+   {ok, 
+      do([k_http ||
+         _ /= new(Uri, Opts),
+         _ /= x('PUT'),
+         _ /= h('Content-Type', "application/json"),
+         _ /= h('Transfer-Encoding', "chunked"),
+         _ /= h('Connection', 'keep-alive'),
+         _ /= d(Val),
+         _ /= request(60000),
+         _ =< http_put_return(_),
+         return(_)
+      ])
+   }.
+
+http_put_return([{Code, _, _, _}|Json])
+ when Code =:= 201 orelse Code =:= 200 ->
+   %% TODO: how to handle meta-data about key (e.g. created and version)?
+   %%   <<"{\"_index\":\"a\",\"_type\":\"b\",\"_id\":\"1\",\"_version\":1,\"created\":true}">>
+   case to_json(Json) of
+      #{<<"_id">> := Id} -> 
+         {ok, Id};
+      _ -> 
+         ok
+   end;
+http_put_return([{Code, _, _, _}|_]) ->
+   {error, Code}.
+
+%%
+%%
+http_add(Uri, Val, Opts) ->
+   {ok,
+      do([k_http ||
+         _ /= new(Uri, Opts),
+         _ /= x('POST'),
+         _ /= h('Content-Type', "application/json"),
+         _ /= h('Transfer-Encoding', "chunked"),
+         _ /= h('Connection', 'keep-alive'),
+         _ /= d(Val),
+         _ /= request(60000),
+         _ =< http_add_return(_),
+         return(_)
+      ])
+   }.
+
+http_add_return([{201, _, _, _}|Json]) ->
+   %% TODO: how to handle meta-data about key (e.g. created and version)?
+   %%   <<"{\"_index\":\"a\",\"_type\":\"b\",\"_id\":\"1\",\"_version\":1,\"created\":true}">>
+   #{<<"_id">> := Id} = to_json(Json),
+   {ok, Id};
+
+http_add_return([{Code, _, _, _}|_]) ->
+   {error, Code}.
+
+
+%%
+%%
+http_get(Uri, Opts) ->
+   {ok, 
+      do([k_http ||
+         _ /= new(Uri, Opts),
+         _ /= x('GET'),
+         _ /= h('Accept', "application/json"),
+         _ /= h('Connection', 'keep-alive'),
+         _ /= request(60000),
+         _ =< http_get_return(_),
+         return(_)
+      ])
+   }.
+
+http_get_return([{200, _, _, _}|Json]) ->
+   #{<<"_source">> := Val} = to_json(Json),
+   {ok, Val};
+
+http_get_return([{404, _, _, _}|_]) ->
+   {error, not_found};
+
+http_get_return([{Code, _, _, _}|_]) ->
+   {error, Code}.
+
+%%
+%%
+http_remove(Uri, Opts) ->
+   {ok, 
+      do([k_http ||
+         _ /= new(Uri, Opts),
+         _ /= x('DELETE'),
+         _ /= h('Accept', "application/json"),
+         _ /= h('Connection', 'keep-alive'),
+         _ /= request(60000),
+         _ =< http_remove_return(_),
+         return(_)
+      ])
+   }.
+
+http_remove_return([{Code, _, _, _}|_])
+ when Code >= 200, Code < 300 orelse Code =:= 404 ->
+   ok;
+http_remove_return([{Code, _, _, _}|_]) ->
+   {error, Code}.
+
+
+%%
+%%
+http_lookup(Uri, Query, Opts) ->
+   {ok,
+      do([k_http ||
+         _ /= new(Uri, Opts),
+         _ /= x('POST'),
+         _ /= h('Content-Type', "application/json"),
+         _ /= h('Transfer-Encoding', "chunked"),
+         _ /= h('Connection', 'keep-alive'),
+         _ /= d(Query),
+         _ /= request(60000),
+         _ =< http_lookup_return(_),
+         return(_)
+      ])
+   }.
+
+http_lookup_return([{200, _, _, _}|Json]) ->
+   #{<<"hits">> := Val} = to_json(Json),
+   {ok, Val};
+
+http_lookup_return([{Code, _, _, _}|_]) ->
+   {error, Code}.
+
+
+%%
+%%
+identity_key(Uri, Key) ->
+   identity_key(segments(Uri), Uri, Key).
+
+identity_key([], Uri, {urn, undefined, <<$/, _/binary>> = Key}) ->
+   % socket is not bound to index, ONLY absolute key is accepted
+   {ok, uri:s(uri:path(Key, Uri))};
+
+identity_key([Cask], Uri, {urn, Type, Key})
+ when Type =/= undefined ->
+   % socket is bound to index, ONLY `urn()` key is supported
+   {ok, uri:s(uri:segments([Cask, Type, Key], Uri))};
+
+identity_key([Cask, Type], Uri, {urn, undefined, Key}) ->
+   % socket is bound to index and type
+   {ok, uri:s(uri:segments([Cask, Type, Key], Uri))};
+
+identity_key([Cask, _], Uri, {urn, Type, Key}) ->
+   % socket is bound to index and type but `urn()` format of key overrides it
+   {ok, uri:s(uri:segments([Cask, Type, Key], Uri))};
+
+identity_key(_, _, Key) ->
+   {error, {badkey, Key}}.
+
+%%
+%%
+identity_type(Uri) ->
    case uri:segments(Uri) of
-      %% /{index}/{type}/{id} (use own ID)
-      [_, _, _ | _] -> 'PUT';
-
-      %% /{index}/{type} (use auto generated ID)
-      [_, _]    -> 'POST';
-
-      %% /{index} (schema deployment)
-      [_]       -> 'PUT'
+      [Cask, Type | _] -> 
+         {ok, uri:s(uri:segments([Cask, Type], Uri))};
+      Path -> 
+         {error, {badkey, Path}}
    end.
 
 %%
 %%
-urn_to_cask(Uri, {urn, _, _} = Key) ->
-   uri:segments(
-      urn_to_cask_join(
-         uri:segments(Uri),
-         uri:segments(Key)
-      ), 
-      Uri
-   ).
+identity_lookup(Uri, Key) ->
+   identity_lookup(segments(Uri), Uri, Key).
 
-urn_to_cask_join(undefined, Key) ->
-   Key;
-urn_to_cask_join(Uri, Key) ->
-   {X, _} = lists:split(
-      erlang:min(length(Uri), erlang:max(3 - length(Key), 0)),
-      Uri
-   ),
-   reduce_urn(X ++ Key).
-
-reduce_urn([Cask, Type | Uid])
- when length(Uid) > 1 ->
-   [Cask, Type, iolist_to_binary(lists:join($:, Uid))];
-
-reduce_urn(Urn) ->
-   Urn.
-
-%%
-%%
-urn_to_search(Uri, {urn, _, _} = Key) ->
-   uri:segments(
-      urn_to_search_join(
-         uri:segments(Uri),
-         uri:segments(Key)
-      ), 
-      Uri
-   ).
-
-urn_to_search_join([<<"*">>], _) ->
-   [<<"_search">>];
-urn_to_search_join(_, [<<"*">>]) ->
-   [<<"_search">>];
-urn_to_search_join(undefined, Key) ->
-   Key ++ [<<"_search">>];
-urn_to_search_join(Uri, Key) ->
-   {X, _} = lists:split(
-      erlang:min(length(Uri), 2 - length(Key)),
-      Uri
-   ),
-   X ++ Key ++ [<<"_search">>].
+identity_lookup([], Uri,  {urn, _, <<"_search">>}) ->
+   {ok, uri:s(uri:segments([<<"_search">>], Uri))};
+identity_lookup([], Uri, {urn, Cask, Type}) ->
+   {ok, uri:s(uri:segments([Cask, Type, <<"_search">>], Uri))};
+ 
+identity_lookup([Cask], Uri, {urn, _, <<"_search">>}) ->
+   {ok, uri:s(uri:segments([Cask, <<"_search">>], Uri))};
+identity_lookup([Cask], Uri, {urn, _, Type}) ->
+   {ok, uri:s(uri:segments([Cask, Type, <<"_search">>], Uri))};
+identity_lookup([Cask, Type], Uri, _) ->
+   {ok, uri:s(uri:segments([Cask, Type, <<"_search">>], Uri))};
+identity_lookup(_, _, Key) ->
+   {error, {badkey, Key}}.
 
 
 %%
 %%
-to_json(Pckt) ->
-   jsx:decode(
-      erlang:iolist_to_binary(
-         lists:reverse(Pckt)
-      ),
-      [return_maps]
-   ).
+segments(Uri) ->
+   case uri:segments(Uri) of
+      undefined ->
+         [];
+      Segments ->
+         Segments 
+   end.
