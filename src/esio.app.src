@@ -3,12 +3,17 @@
       {description, "elastic search i/o"},
       {vsn,         "1.0.0"},
       {modules,     []},
-      {registered,  []},
+      {registered,  [
+         esio_sup
+        ,esio_socket_sup
+        ,esio_socket_bulk_sup
+      ]},
       {applications,[
          kernel
         ,stdlib
         ,lager
         ,knet
+        ,jsx
       ]},
       {mod, {esio_app, []}},
       {env, []}
