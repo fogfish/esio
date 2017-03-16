@@ -13,6 +13,7 @@
         ,stdlib
         ,lager
         ,knet
+        ,jsx
       ]},
       {mod, {esio_app, []}},
       {env, []}
