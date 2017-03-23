@@ -143,7 +143,7 @@ http_return(Pipe, State, {error, _} = Error) ->
 %%
 http_put(Uri, Val, Opts) ->
    {ok, 
-      do([k_http ||
+      do([m_http ||
          _ /= new(Uri, Opts),
          _ /= x('PUT'),
          _ /= h('Content-Type', "application/json"),
@@ -173,7 +173,7 @@ http_put_return([{Code, _, _, _}|_]) ->
 %%
 http_add(Uri, Val, Opts) ->
    {ok,
-      do([k_http ||
+      do([m_http ||
          _ /= new(Uri, Opts),
          _ /= x('POST'),
          _ /= h('Content-Type', "application/json"),
@@ -200,7 +200,7 @@ http_add_return([{Code, _, _, _}|_]) ->
 %%
 http_get(Uri, Opts) ->
    {ok, 
-      do([k_http ||
+      do([m_http ||
          _ /= new(Uri, Opts),
          _ /= x('GET'),
          _ /= h('Accept', "application/json"),
@@ -225,7 +225,7 @@ http_get_return([{Code, _, _, _}|_]) ->
 %%
 http_remove(Uri, Opts) ->
    {ok, 
-      do([k_http ||
+      do([m_http ||
          _ /= new(Uri, Opts),
          _ /= x('DELETE'),
          _ /= h('Accept', "application/json"),
@@ -247,7 +247,7 @@ http_remove_return([{Code, _, _, _}|_]) ->
 %%
 http_lookup(Uri, Query, Opts) ->
    {ok,
-      do([k_http ||
+      do([m_http ||
          _ /= new(Uri, Opts),
          _ /= x('POST'),
          _ /= h('Content-Type', "application/json"),
