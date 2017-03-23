@@ -123,7 +123,7 @@ http_return(State, {error, _}) ->
 %%
 http_bulk(Uri, Chunk, Opts) ->
    {ok, 
-      do([k_http ||
+      do([m_http ||
          _ /= new(Uri, Opts),
          _ /= x('PUT'),
          _ /= h('Content-Type', "application/json"),
