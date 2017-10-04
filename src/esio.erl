@@ -27,7 +27,8 @@
 -export([
    lookup/2, lookup/3, lookup/4, lookup_/2, lookup_/3, lookup_/4,
    stream/2, stream/3, 
-   match/2,  match/3 
+   match/2,  match/3,
+   pattern/1
 ]).
 
 %%
@@ -231,6 +232,17 @@ match(Sock, Pattern) ->
 match(Sock, Uid, Pattern)
  when is_map(Pattern) ->
    esio_stream:match(Sock, identity(Uid), Pattern).
+
+%%
+%%
+-spec pattern(_) -> _.
+
+pattern(Pattern) ->
+   #{'query' => 
+      #{bool => 
+         #{must => [#{match => maps:put(Key, Val, #{})} || {Key, Val} <- maps:to_list(Pattern)] }
+      }
+   }.
 
 
 %%-----------------------------------------------------------------------------

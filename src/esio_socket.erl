@@ -261,8 +261,14 @@ http_lookup(Uri, Query, Opts) ->
    }.
 
 http_lookup_return([{200, _, _, _}|Json]) ->
-   #{<<"hits">> := Val} = to_json(Json),
-   {ok, Val};
+   case to_json(Json) of
+      %% search results
+      #{<<"hits">> := Val} ->
+         {ok, Val};
+      %% delete by query results
+      #{<<"deleted">> := _} = Val ->
+         {ok, Val}
+   end;
 
 http_lookup_return([{Code, _, _, _}|_]) ->
    {error, Code}.
@@ -315,8 +321,13 @@ identity_lookup([], Uri, {urn, Cask, Type}) ->
  
 identity_lookup([Cask], Uri, {urn, _, <<"_search">>}) ->
    {ok, uri:s(uri:segments([Cask, <<"_search">>], Uri))};
+identity_lookup([Cask], Uri, {urn, _, <<"_delete_by_query">>}) ->
+   {ok, uri:s(uri:segments([Cask, <<"_delete_by_query">>], Uri))};
+
 identity_lookup([Cask], Uri, {urn, _, Type}) ->
    {ok, uri:s(uri:segments([Cask, Type, <<"_search">>], Uri))};
+identity_lookup([Cask, Type], Uri, {urn, _, <<"_delete_by_query">>}) ->
+   {ok, uri:s(uri:segments([Cask, Type, <<"_delete_by_query">>], Uri))};   
 identity_lookup([Cask, Type], Uri, _) ->
    {ok, uri:s(uri:segments([Cask, Type, <<"_search">>], Uri))};
 identity_lookup(_, _, Key) ->
