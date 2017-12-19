@@ -9,7 +9,6 @@
 -module(esio_socket).
 -behaviour(pipe).
 -compile({parse_transform, category}).
--compile({parse_transform, monad}).
 
 -author('dmitry.kolesnikov@zalando.fi').
 
@@ -52,7 +51,7 @@ free(_, _) ->
 handle({put, Key, Val}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
    {next_state, handle,
       http_return(Pipe, State0,
-         [$^ ||
+         [either ||
             identity_key(Uri, Key),
             http_put(_, Val, Opts),
             http_run(_, State0)
@@ -63,7 +62,7 @@ handle({put, Key, Val}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
 handle({add, Val}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
    {next_state, handle,
       http_return(Pipe, State0, 
-         [$^ ||
+         [either ||
             identity_type(Uri),
             http_add(_, Val, Opts),
             http_run(_, State0)
@@ -74,7 +73,7 @@ handle({add, Val}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
 handle({get, Key}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
    {next_state, handle,
       http_return(Pipe, State0,
-         [$^ ||
+         [either ||
             identity_key(Uri, Key),
             http_get(_, Opts),
             http_run(_, State0)
@@ -86,7 +85,7 @@ handle({get, Key}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
 handle({remove, Key}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
    {next_state, handle,
       http_return(Pipe, State0,
-         [$^ ||
+         [either ||
             identity_key(Uri, Key),
             http_remove(_, Opts),
             http_run(_, State0)
@@ -97,7 +96,7 @@ handle({remove, Key}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
 handle({lookup, Uid, Query}, Pipe, #{uri := Uri, opts := Opts} = State0) ->
    {next_state, handle,
       http_return(Pipe, State0,
-         [$^ ||
+         [either ||
             identity_lookup(Uri, Uid),
             http_lookup(_, Query, Opts),
             http_run(_, State0)
@@ -118,7 +117,7 @@ handle(close, _, State) ->
 %%
 %%
 to_json(Pckt) ->
-   [$.||
+   [identity ||
       erlang:iolist_to_binary(Pckt),
       jsx:decode(_, [return_maps])
    ].
@@ -143,20 +142,19 @@ http_return(Pipe, State, {error, _} = Error) ->
 %%
 http_put(Uri, Val, Opts) ->
    {ok, 
-      do([m_http ||
-         _ /= new(Uri, Opts),
-         _ /= x('PUT'),
-         _ /= h('Content-Type', "application/json"),
-         _ /= h('Transfer-Encoding', "chunked"),
-         _ /= h('Connection', 'keep-alive'),
-         _ /= d(Val),
-         _ /= request(60000),
-         _ =< http_put_return(_),
-         return(_)
-      ])
+      [m_http ||
+         cats:new(Uri, Opts),
+         cats:x('PUT'),
+         cats:h('Content-Type', "application/json"),
+         cats:h('Transfer-Encoding', "chunked"),
+         cats:h('Connection', 'keep-alive'),
+         cats:d(Val),
+         cats:request(60000),
+         cats:unit(http_put_return(_))
+      ]
    }.
 
-http_put_return([{Code, _, _, _}|Json])
+http_put_return([{Code, _, _}|Json])
  when Code =:= 201 orelse Code =:= 200 ->
    %% TODO: how to handle meta-data about key (e.g. created and version)?
    %%   <<"{\"_index\":\"a\",\"_type\":\"b\",\"_id\":\"1\",\"_version\":1,\"created\":true}">>
@@ -166,33 +164,32 @@ http_put_return([{Code, _, _, _}|Json])
       _ -> 
          ok
    end;
-http_put_return([{Code, _, _, _}|_]) ->
+http_put_return([{Code, _, _}|_]) ->
    {error, Code}.
 
 %%
 %%
 http_add(Uri, Val, Opts) ->
    {ok,
-      do([m_http ||
-         _ /= new(Uri, Opts),
-         _ /= x('POST'),
-         _ /= h('Content-Type', "application/json"),
-         _ /= h('Transfer-Encoding', "chunked"),
-         _ /= h('Connection', 'keep-alive'),
-         _ /= d(Val),
-         _ /= request(60000),
-         _ =< http_add_return(_),
-         return(_)
-      ])
+      [m_http ||
+         cats:new(Uri, Opts),
+         cats:x('POST'),
+         cats:h('Content-Type', "application/json"),
+         cats:h('Transfer-Encoding', "chunked"),
+         cats:h('Connection', 'keep-alive'),
+         cats:d(Val),
+         cats:request(60000),
+         cats:unit(http_add_return(_))
+      ]
    }.
 
-http_add_return([{201, _, _, _}|Json]) ->
+http_add_return([{201, _, _}|Json]) ->
    %% TODO: how to handle meta-data about key (e.g. created and version)?
    %%   <<"{\"_index\":\"a\",\"_type\":\"b\",\"_id\":\"1\",\"_version\":1,\"created\":true}">>
    #{<<"_id">> := Id} = to_json(Json),
    {ok, Id};
 
-http_add_return([{Code, _, _, _}|_]) ->
+http_add_return([{Code, _, _}|_]) ->
    {error, Code}.
 
 
@@ -200,46 +197,44 @@ http_add_return([{Code, _, _, _}|_]) ->
 %%
 http_get(Uri, Opts) ->
    {ok, 
-      do([m_http ||
-         _ /= new(Uri, Opts),
-         _ /= x('GET'),
-         _ /= h('Accept', "application/json"),
-         _ /= h('Connection', 'keep-alive'),
-         _ /= request(60000),
-         _ =< http_get_return(_),
-         return(_)
-      ])
+      [m_http ||
+         cats:new(Uri, Opts),
+         cats:x('GET'),
+         cats:h('Accept', "application/json"),
+         cats:h('Connection', 'keep-alive'),
+         cats:request(60000),
+         cats:unit(http_get_return(_))
+      ]
    }.
 
-http_get_return([{200, _, _, _}|Json]) ->
+http_get_return([{200, _, _}|Json]) ->
    #{<<"_source">> := Val} = to_json(Json),
    {ok, Val};
 
-http_get_return([{404, _, _, _}|_]) ->
+http_get_return([{404, _, _}|_]) ->
    {error, not_found};
 
-http_get_return([{Code, _, _, _}|_]) ->
+http_get_return([{Code, _, _}|_]) ->
    {error, Code}.
 
 %%
 %%
 http_remove(Uri, Opts) ->
    {ok, 
-      do([m_http ||
-         _ /= new(Uri, Opts),
-         _ /= x('DELETE'),
-         _ /= h('Accept', "application/json"),
-         _ /= h('Connection', 'keep-alive'),
-         _ /= request(60000),
-         _ =< http_remove_return(_),
-         return(_)
-      ])
+      [m_http ||
+         cats:new(Uri, Opts),
+         cats:x('DELETE'),
+         cats:h('Accept', "application/json"),
+         cats:h('Connection', 'keep-alive'),
+         cats:request(60000),
+         cats:unit(http_remove_return(_))
+      ]
    }.
 
-http_remove_return([{Code, _, _, _}|_])
+http_remove_return([{Code, _, _}|_])
  when Code >= 200, Code < 300 orelse Code =:= 404 ->
    ok;
-http_remove_return([{Code, _, _, _}|_]) ->
+http_remove_return([{Code, _, _}|_]) ->
    {error, Code}.
 
 
@@ -247,20 +242,19 @@ http_remove_return([{Code, _, _, _}|_]) ->
 %%
 http_lookup(Uri, Query, Opts) ->
    {ok,
-      do([m_http ||
-         _ /= new(Uri, Opts),
-         _ /= x('POST'),
-         _ /= h('Content-Type', "application/json"),
-         _ /= h('Transfer-Encoding', "chunked"),
-         _ /= h('Connection', 'keep-alive'),
-         _ /= d(Query),
-         _ /= request(60000),
-         _ =< http_lookup_return(_),
-         return(_)
-      ])
+      [m_http ||
+         cats:new(Uri, Opts),
+         cats:x('POST'),
+         cats:h('Content-Type', "application/json"),
+         cats:h('Transfer-Encoding', "chunked"),
+         cats:h('Connection', 'keep-alive'),
+         cats:d(Query),
+         cats:request(60000),
+         cats:unit(http_lookup_return(_))
+      ]
    }.
 
-http_lookup_return([{200, _, _, _}|Json]) ->
+http_lookup_return([{200, _, _}|Json]) ->
    case to_json(Json) of
       %% search results
       #{<<"hits">> := Val} ->
@@ -270,7 +264,7 @@ http_lookup_return([{200, _, _, _}|Json]) ->
          {ok, Val}
    end;
 
-http_lookup_return([{Code, _, _, _}|_]) ->
+http_lookup_return([{Code, _, _}|_]) ->
    {error, Code}.
 
 

@@ -9,7 +9,6 @@
 -module(esio_socket_bulk).
 -behaviour(pipe).
 -compile({parse_transform, category}).
--compile({parse_transform, monad}).
 -author('dmitry.kolesnikov@zalando.fi').
 
 -include("esio.hrl").
@@ -58,7 +57,7 @@ handle({put, _, _} = Req, Pipe, #{uri := Uri, opts := Opts, chunk := Chunk0, n :
       {Chunk1, Len} when Len >= N ->
          {next_state, handle,
             http_return(Pipe, State0,
-               [$^ ||
+               [either ||
                   identity_bulk(Uri),
                   http_bulk(_, Chunk1, Opts),
                   http_run(_, State0)
@@ -80,7 +79,7 @@ handle(sync, _, #{uri := Uri, opts := Opts, chunk := Chunk0, t := T} = State0) -
       _ ->
          {next_state, handle,
             http_return(State0,
-               [$^ ||
+               [either ||
                   identity_bulk(Uri),
                   http_bulk(_, Chunk0, Opts),
                   http_run(_, State0)
@@ -123,24 +122,23 @@ http_return(State, {error, _}) ->
 %%
 http_bulk(Uri, Chunk, Opts) ->
    {ok, 
-      do([m_http ||
-         _ /= new(Uri, Opts),
-         _ /= x('PUT'),
-         _ /= h('Content-Type', "application/json"),
-         _ /= h('Transfer-Encoding', "chunked"),
-         _ /= h('Connection', 'keep-alive'),
-         _ /= d(encode(uri:new(Uri), Chunk)),
-         _ /= request(60000),
-         _ =< http_bulk_return(_),
-         return(_)
-      ])
+      [m_http ||
+         cats:new(Uri, Opts),
+         cats:x('PUT'),
+         cats:h('Content-Type', "application/json"),
+         cats:h('Transfer-Encoding', "chunked"),
+         cats:h('Connection', 'keep-alive'),
+         cats:d(encode(uri:new(Uri), Chunk)),
+         cats:request(60000),
+         cats:unit(http_bulk_return(_))
+      ]
    }.
 
-http_bulk_return([{200, _, _, _}|_]) ->
+http_bulk_return([{200, _, _}|_]) ->
    %% @todo: bulk api response is not very efficient to ack the request.
    %%        the library implements fire-and-forget  
    ok;
-http_bulk_return([{Code, _, _, _}|_]) ->
+http_bulk_return([{Code, _, _}|_]) ->
    {error, Code}.
 
 

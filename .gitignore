@@ -5,7 +5,6 @@ _build/
 log/
 ebin/
 rebar3
-rebar.lock
 test/*.beam
 test/test.erl
 
