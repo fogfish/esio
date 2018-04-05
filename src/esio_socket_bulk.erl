@@ -98,7 +98,7 @@ handle(close, _Pipe, #{uri := Uri, opts := Opts, chunk := Chunk0, t := T} = Stat
                   http_run(_, State0)
                ]
             ),
-   {stop, normal, State}.
+   {stop, normal, State0}.
 
 
 %%%----------------------------------------------------------------------------   
