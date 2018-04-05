@@ -157,8 +157,11 @@ identity_bulk(Uri) ->
 encode(_Uri, {}) ->
    [];
 encode(Uri, Chunk) ->
-   {_, Key, Val} = deq:head(Chunk),
-   [encode(Uri, Key, Val) | encode(Uri, deq:tail(Chunk))].
+   case deq:head(Chunk) of
+      undefined -> [];
+      {_, Key, Val} -> 
+         [encode(Uri, Key, Val) | encode(Uri, deq:tail(Chunk))]
+   end.
 
 encode(Uri, {urn, Type, Key}, Val) ->
    Cask = hd(uri:segments(Uri)),
