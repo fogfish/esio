@@ -91,14 +91,18 @@ handle(sync, _, #{uri := Uri, opts := Opts, chunk := Chunk0, t := T} = State0) -
 handle(close, _Pipe, #{uri := Uri, opts := Opts, chunk := Chunk0, t := T} = State0) ->
    %% We should not discard existing messages so let's send them immediately, and then stop.
    tempus:cancel(T),
-   http_return(State0,
-               [either ||
-                  identity_bulk(Uri),
-                  http_bulk(_, Chunk0, Opts),
-                  http_run(_, State0)
-               ]
-            ),
-   {stop, normal, State0}.
+   case deq:length(Chunk0) of
+      0 -> ok;
+      _ ->
+         http_return(State0,
+                     [either ||
+                        identity_bulk(Uri),
+                        http_bulk(_, Chunk0, Opts),
+                        http_run(_, State0)
+                     ]
+                  )
+   end,
+   {stop, normal, State0#{chunk => q:new()}}.
 
 
 %%%----------------------------------------------------------------------------   
