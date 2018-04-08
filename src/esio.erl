@@ -14,7 +14,8 @@
 -export([
    socket/1,
    socket/2,
-   close/1
+   close/1,
+   schema/2
 ]).
 %% key/value (hash-map like interface)
 -export([
@@ -27,16 +28,19 @@
 -export([
    lookup/2, lookup/3, lookup/4, lookup_/2, lookup_/3, lookup_/4,
    stream/2, stream/3, 
-   match/2,  match/3,
+   match/2, %,  match/3,
    pattern/1
 ]).
 
 %%
 %% data types
--type url()  :: uri:uri().
--type key()  :: {urn, type(), uid()} | uid().
+-type url()    :: uri:uri().
+-type key()    :: datum:option(_).
+-type json()   :: #{}.
+% -type bucket() :: binary() | atom().
+% -type uid()    :: binary().
+
 -type type() :: binary().
--type uid()  :: binary().
 -type val()  :: map().
 -type req()  :: map().
 -type sock() :: pid().
@@ -44,8 +48,8 @@
 
 %%
 %% start application (RnD mode)
-start() -> 
-   applib:boot(?MODULE, []).
+start() ->
+   application:ensure_all_started(?MODULE).
 
 %%
 %% create communication socket to Elastic Search.
@@ -56,8 +60,8 @@ start() ->
 %%   * n         - number of messages to buffer in bulk request 
 %%   * t         - timeout to flush bulk request buffer
 %%
--spec socket(url()) -> {ok, sock()} | {error, _}.
--spec socket(url(), [_]) -> {ok, sock()} | {error, _}.
+-spec socket(url()) -> datum:either( sock() ).
+-spec socket(url(), [_]) -> datum:either( sock() ).
 
 socket(Uri) ->
    socket(Uri, []).
@@ -80,6 +84,17 @@ socket(Uri, Opts) ->
 close(Sock) ->
    pipe:send(Sock, close).
 
+%%
+%% deploy index schema
+-spec schema(sock(), json()) -> datum:either().
+-spec schema(sock(), json(), timeout()) -> datum:either().
+
+schema(Sock, Json) ->
+   schema(Sock, Json, ?TIMEOUT).
+
+schema(Sock, Json, Timeout) ->
+   req(Sock, {schema, Json}, Timeout).
+
 
 %%
 %% synchronous put operation
@@ -90,7 +105,7 @@ put(Sock, Key, Val) ->
    put(Sock, Key, Val, ?TIMEOUT).
 
 put(Sock, Key, Val, Timeout) ->
-   req(Sock, {put, identity(Key), jsx:encode(Val)}, Timeout).
+   req(Sock, {put, scalar:s(Key), Val}, Timeout).
 
 
 %%
@@ -107,11 +122,11 @@ put_(Sock, Key, Val, Flag) ->
 
 %%
 %%
--spec add(sock(), val()) -> {ok, _} | {error, _}.
--spec add(sock(), val(), timeout()) -> {ok, _} | {error, _}.
-
+% -spec add(sock(), val()) -> {ok, _} | {error, _}.
+% -spec add(sock(), val(), timeout()) -> {ok, _} | {error, _}.
 add(Sock, Val) ->
-   add(Sock, Val, ?TIMEOUT).
+   req(Sock, {add, Val}, ?TIMEOUT).
+
 
 add(Sock, Val, Timeout) ->
    req(Sock, {add, jsx:encode(Val)}, Timeout).
@@ -138,7 +153,7 @@ get(Sock, Key) ->
    get(Sock, Key, ?TIMEOUT).
 
 get(Sock, Key, Timeout) ->
-   req(Sock, {get, identity(Key)}, Timeout).
+   req(Sock, {get, scalar:s(Key)}, Timeout).
 
 
 %%
@@ -162,7 +177,7 @@ remove(Sock, Key) ->
    remove(Sock, Key, ?TIMEOUT).
 
 remove(Sock, Key, Timeout) ->
-   req(Sock, {remove, identity(Key)}, Timeout).
+   req(Sock, {remove, scalar:s(Key)}, Timeout).
 
 
 %%
@@ -184,7 +199,8 @@ remove_(Sock, Key, Flag) ->
 -spec lookup(sock(), key(), req(), timeout()) -> {ok, val()} | {error, _}.
 
 lookup(Sock, Query) ->
-   lookup(Sock, ?WILDCARD, Query).
+   req(Sock, {lookup, Query}, ?TIMEOUT).
+   % lookup(Sock, ?WILDCARD, Query).
 
 lookup(Sock, Uid, Query) ->
    lookup(Sock, Uid, Query, ?TIMEOUT).
@@ -224,14 +240,10 @@ stream(Sock, Uid, Query)
 %% pattern match data using elastic search boolean query
 %%    https://www.elastic.co/guide/en/elasticsearch/guide/current/bool-query.html
 -spec match(sock(), req()) -> datum:stream(). 
--spec match(sock(), key(), req()) -> datum:stream(). 
+% -spec match(sock(), key(), req()) -> datum:stream(). 
 
 match(Sock, Pattern) ->
-   match(Sock, ?WILDCARD, Pattern).
-
-match(Sock, Uid, Pattern)
- when is_map(Pattern) ->
-   esio_stream:match(Sock, identity(Uid), Pattern).
+   esio_stream:match(Sock, Pattern).
 
 %%
 %%
@@ -266,9 +278,10 @@ req_(Sock, Req, false) ->
 
 %%
 %%
-identity({urn, Type, Key}) ->
-   {urn, scalar:s(Type), scalar:s(Key)};
-identity(Key) ->
-   {urn, undefined, scalar:s(Key)}.
-
+identity({urn, Bucket, undefined}) ->
+   [scalar:s(Bucket)];
+identity({urn, Bucket, Key}) ->
+   [scalar:s(Bucket), <<"_doc">>, scalar:s(Key)];
+identity(Bucket) ->
+   [scalar:s(Bucket)].
 
