@@ -255,14 +255,7 @@ http_lookup(Uri, Query, Opts) ->
    }.
 
 http_lookup_return([{200, _, _}|Json]) ->
-   case to_json(Json) of
-      %% search results
-      #{<<"hits">> := Val} ->
-         {ok, Val};
-      %% delete by query results
-      #{<<"deleted">> := _} = Val ->
-         {ok, Val}
-   end;
+   {ok, to_json(Json)};
 
 http_lookup_return([{Code, _, _}|_]) ->
    {error, Code}.
