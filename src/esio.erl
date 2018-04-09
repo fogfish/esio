@@ -49,16 +49,10 @@
 
 %%
 %% data types
--type url()    :: uri:uri().
--type key()    :: datum:option(_).
--type val()    :: #{}.
--type req()    :: #{}.
-% -type bucket() :: binary() | atom().
-% -type uid()    :: binary().
-
-% -type type() :: binary().
-% -type val()  :: map().
-% -type req()  :: map().
+-type url()  :: uri:uri().
+-type key()  :: datum:option(_).
+-type val()  :: #{}.
+-type req()  :: #{}.
 -type sock() :: pid().
 
 
