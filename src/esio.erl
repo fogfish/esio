@@ -98,7 +98,7 @@ socket(Uri, Opts) ->
 -spec close(sock()) -> ok.
 
 close(Sock) ->
-   pipe:send(Sock, close).
+   pipe:free(Sock).
 
 %%
 %% deploy index schema
