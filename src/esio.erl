@@ -272,13 +272,3 @@ req_(Sock, Req, true) ->
 req_(Sock, Req, false) ->
    pipe:send(Sock, Req), 
    ok.
-
-%%
-%%
-% identity({urn, Bucket, undefined}) ->
-%    [scalar:s(Bucket)];
-% identity({urn, Bucket, Key}) ->
-%    [scalar:s(Bucket), <<"_doc">>, scalar:s(Key)];
-% identity(Bucket) ->
-%    [scalar:s(Bucket)].
-

@@ -68,7 +68,11 @@ handle(sync, _, State) ->
          http(_),
          timeout(_)
       ]
-   }.
+   };
+
+handle({http, _, passive}, Pipe, State) ->
+   pipe:a(Pipe, {active, 1024}),
+   {next_state, handle, State}.
 
 
 %%%----------------------------------------------------------------------------   
@@ -89,8 +93,8 @@ http([Http | State0]) ->
    case Http(State0) of
       [ok | State1] ->
          [ok | maps:without([req, ret], State1#{chunk => q:new()})];
-   [Result | State1] ->
-      [Result | maps:without([req, ret], State1)]
+      [Result | State1] ->
+         [Result | maps:without([req, ret], State1)]
    end;
 
 http(Http) ->

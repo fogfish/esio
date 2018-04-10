@@ -105,10 +105,7 @@ handle({lookup, Query}, Pipe, #{uri := Uri} = State) ->
 
 handle({http, _, passive}, Pipe, State) ->
    pipe:a(Pipe, {active, 1024}),
-   {next_state, handle, State};
-
-handle(close, _, State) ->
-   {stop, normal, State}.
+   {next_state, handle, State}.
 
 
 %%%----------------------------------------------------------------------------   
@@ -124,7 +121,6 @@ http(Http) ->
 
 http(Http, State0) ->
    [Result | State1] = Http(State0),
-   io:format("==> ~p~n", [State1]),
    [Result | maps:without([req, ret], State1)].
 
 
@@ -238,10 +234,8 @@ elastic_lookup(Uri, Query) ->
       cats:unit( elastic_lookup_return(_) )
    ].
 
-elastic_lookup_return([{200, _, _}, #{<<"hits">> := Val}]) ->
-   {ok, Val};
-elastic_lookup_return([{200, _, _}, #{<<"deleted">> := _} = Val]) ->
-   {ok, Val};
+elastic_lookup_return([{200, _, _}, Json]) ->
+   {ok, Json};
 elastic_lookup_return([{Code, _, _}, Reason]) ->
    {error, {Code, Reason}}.
 

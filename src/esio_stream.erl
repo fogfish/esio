@@ -9,6 +9,7 @@
 -module(esio_stream). 
 -include("esio.hrl").
 
+
 -export([stream/2, match/2]).
 
 %%
@@ -27,17 +28,17 @@ stream(Sock, Query) ->
    ).
 
 match(Sock, Pattern) ->
-   stream(Sock, pattern_to_query(Pattern)).
+   stream(Sock, esio:pattern(Pattern)).
 
 %%
 %%
 unfold(#{state := [], q := #{from := From} = Query} = Seed)
  when From < 10000 ->
    case lookup(Seed) of
-      {ok, #{<<"hits">> := []}} ->
+      {ok, #{<<"hits">> := #{<<"hits">> := []}}} ->
          {eos, Seed};
 
-      {ok, #{<<"hits">> := Hits, <<"max_score">> := Score}} ->
+      {ok, #{<<"hits">> := #{<<"hits">> := Hits, <<"max_score">> := Score}}} ->
          unfold(
             Seed#{
                state => Hits, 
@@ -59,16 +60,6 @@ unfold(#{state := [#{<<"_score">> := Score} = H|T], score := Base} = Seed) ->
 %%
 lookup(#{sock := Sock, q := Query}) ->
    esio:lookup(Sock, Query).
-
-
-%%
-%%
-pattern_to_query(Pattern) ->
-   #{'query' => 
-      #{bool => 
-         #{must => [#{match => maps:put(Key, Val, #{})} || {Key, Val} <- maps:to_list(Pattern)] }
-      }
-   }.
 
 %%
 %%
