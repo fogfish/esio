@@ -93,6 +93,17 @@ handle({remove, Key}, Pipe, #{uri := Uri} = State) ->
       ]
    };
 
+handle({update, Key, Json}, Pipe, #{uri := Uri} = State) ->
+   {next_state, handle,
+      [identity ||
+         identity_update(Key, Uri),
+         elastic_update(_, Json),
+         http(_, State),
+         ack(Pipe, _)
+      ]
+   };
+
+
 handle({lookup, Query}, Pipe, #{uri := Uri} = State) ->
    {next_state, handle,
       [identity ||
@@ -219,6 +230,18 @@ elastic_remove_return([{Code, _, _}, #{<<"_id">> := Key}])
 elastic_remove_return([{Code, _, _}, Reason]) ->
    {error, {Code, Reason}}.
 
+%%
+elastic_update(Uri, Json) ->
+   [m_http ||
+      cats:new(Uri),
+      cats:method('POST'),
+      cats:header('Content-Type', "application/json"),
+      cats:header('Transfer-Encoding', "chunked"),
+      cats:header('Connection', "keep-alive"),
+      cats:payload(#{doc => Json, doc_as_upsert => true}),
+      cats:request(60000),
+      cats:unit( elastic_put_return(_) )
+   ].
 
 %%
 %%
@@ -255,6 +278,16 @@ identity_key(Uri) ->
       lens:put(lens:hd(), _, [undefined, <<"_doc">>]),
       uri:segments(_, Uri)
    ].
+
+%%
+%%
+identity_update(Key, Uri) ->
+   [identity ||
+      uri:segments(Uri),
+      lens:put(lens:hd(), _, [undefined, <<"_doc">>, Key, <<"_update">>]),
+      uri:segments(_, Uri)
+   ].
+
 
 %%
 %%

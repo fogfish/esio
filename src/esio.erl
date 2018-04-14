@@ -34,7 +34,11 @@
    remove/2,
    remove/3,
    remove_/2,
-   remove_/3
+   remove_/3,
+   update/3,
+   update/4,
+   update_/3,
+   update_/4
 ]).
 %% query and stream interface
 -export([
@@ -201,6 +205,28 @@ remove_(Sock, Key) ->
 remove_(Sock, Key, Flag) ->
    req_(Sock, {remove, scalar:s(Key)}, Flag).
 
+%%
+%% synchronous put operation
+-spec update(sock(), key(), val()) -> datum:either( key() ).
+-spec update(sock(), key(), val(), timeout()) -> datum:either( key() ).
+
+update(Sock, Key, Val) ->
+   update(Sock, Key, Val, ?TIMEOUT).
+
+update(Sock, Key, Val, Timeout) ->
+   req(Sock, {update, scalar:s(Key), Val}, Timeout).
+
+
+%%
+%% asynchronous put operation
+-spec update_(sock(), key(), val()) -> ok.
+-spec update_(sock(), key(), val(), boolean()) -> ok | reference().
+
+update_(Sock, Key, Val) ->
+   update_(Sock, Key, Val, false).
+
+update_(Sock, Key, Val, Flag) ->
+   req_(Sock, {update, scalar:s(Key), Val}, Flag).
 
 %%
 %% synchronous lookup (execute elastic search query)

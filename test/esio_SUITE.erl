@@ -35,6 +35,9 @@
    remove_call/1,
    remove_cast/1,
    remove_send/1,
+   update_call/1,
+   update_cast/1,
+   update_send/1,   
    lookup_call/1,
    lookup_cast/1,
    lookup_send/1,
@@ -60,6 +63,7 @@ groups() ->
       {interface, [], 
          [socket, schema, put_call, put_cast, put_send, add_call, add_cast, add_send, 
          get_call, get_cast, get_send, remove_call, remove_cast, remove_send, 
+         update_call, update_cast, update_send, 
          lookup_call, lookup_cast, lookup_send, stream, match,
          bulk, bulk_sync, bulk_timeout]}
    ].
@@ -254,6 +258,40 @@ remove_send(_Config) ->
    ok = esio:close(Sock),
 
    true = meck:validate(m_http).
+
+%%
+update_call(_Config) ->
+   meck:expect(m_http, request, elastic_mock(esio_FIXTURE:elastic_ret_put())),
+   Expect = esio_FIXTURE:key(),
+
+   {ok, Sock} = esio:socket("http://localhost:9200/bucket", []),
+   {ok, Expect} = esio:update(Sock, esio_FIXTURE:key(), esio_FIXTURE:doc()),
+   ok = esio:close(Sock),
+
+   true = meck:validate(m_http).
+
+%%
+update_cast(_Config) ->
+   meck:expect(m_http, request, elastic_mock(esio_FIXTURE:elastic_ret_put())),
+   Expect = esio_FIXTURE:key(),
+
+   {ok, Sock} = esio:socket("http://localhost:9200/bucket", []),
+   Ref = esio:update_(Sock, esio_FIXTURE:key(), esio_FIXTURE:doc(), true),
+   receive {Ref, {ok, Expect}} -> ok end,
+   ok = esio:close(Sock),
+
+   true = meck:validate(m_http).
+
+%%
+update_send(_Config) ->
+   meck:expect(m_http, request, elastic_mock(esio_FIXTURE:elastic_ret_put())),
+
+   {ok, Sock} = esio:socket("http://localhost:9200/bucket", []),
+   ok = esio:update_(Sock, esio_FIXTURE:key(), esio_FIXTURE:doc()),
+   ok = esio:close(Sock),
+
+   true = meck:validate(m_http).
+
 
 %%
 lookup_call(_Config) ->
