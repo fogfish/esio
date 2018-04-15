@@ -15,7 +15,9 @@
    socket/1,
    socket/2,
    close/1,
-   schema/2
+   schema/1,
+   schema/2,
+   schema/3
 ]).
 %% key/value (hash-map like interface)
 -export([
@@ -97,6 +99,13 @@ socket(Uri, Opts) ->
 
 close(Sock) ->
    pipe:free(Sock).
+
+%%
+%% read index schema
+-spec schema(sock()) -> datum:either( val() ).
+
+schema(Sock) ->
+   req(Sock, schema, ?TIMEOUT).
 
 %%
 %% deploy index schema

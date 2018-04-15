@@ -43,6 +43,14 @@ free(_, _) ->
 %% state machine
 %%
 %%-----------------------------------------------------------------------------
+handle(schema, Pipe, #{uri := Uri} = State) ->
+   {next_state, handle,
+      [identity ||
+         elastic_get(Uri),
+         http(_, State),
+         ack(Pipe, _)
+      ]
+   };
 
 handle({schema, Json}, Pipe, #{uri := Uri} = State) ->
    {next_state, handle,
@@ -204,6 +212,9 @@ elastic_get(Uri) ->
    ].
 
 elastic_get_return([{200, _, _}, #{<<"_source">> := Json}]) ->
+   {ok, Json};
+
+elastic_get_return([{200, _, _}, Json]) ->
    {ok, Json};
 
 elastic_get_return([{404, _, _} | _]) ->
