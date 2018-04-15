@@ -141,7 +141,7 @@ elastic_bulk_req(#{chunk := Chunk, uri := Uri}) ->
       cats:unit( elastic_bulk_ret(_) )
    ].
 
-elastic_bulk_ret([{200, _, _}, Json]) ->
+elastic_bulk_ret([{200, _, _}, _Json]) ->
    %% @todo: bulk api response is not very efficient to ack the request.
    %%        the library implements fire-and-forget  
    %%        however, it is possible to analyses results of bulk response and
