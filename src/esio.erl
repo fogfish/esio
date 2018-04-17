@@ -192,12 +192,16 @@ get_(Sock, Key, Flag) ->
 
 
 %%
-%% synchronous remove operation
--spec remove(sock(), key()) -> datum:either( key() ).
--spec remove(sock(), key(), timeout()) -> datum:either( key() ).
+%% synchronous remove operation either by key or query
+-spec remove(sock(), key() | req()) -> datum:either( key() ).
+-spec remove(sock(), key() | req(), timeout()) -> datum:either( key() ).
 
 remove(Sock, Key) ->
    remove(Sock, Key, ?TIMEOUT).
+
+remove(Sock, Query, Timeout)
+ when is_map(Query) ->
+   req(Sock, {remove, Query}, Timeout);
 
 remove(Sock, Key, Timeout) ->
    req(Sock, {remove, scalar:s(Key)}, Timeout).
@@ -210,6 +214,10 @@ remove(Sock, Key, Timeout) ->
 
 remove_(Sock, Key) ->
    remove_(Sock, Key, false).
+
+remove_(Sock, Query, Timeout)
+ when is_map(Query) ->
+   req_(Sock, {remove, Query}, Timeout);
 
 remove_(Sock, Key, Flag) ->
    req_(Sock, {remove, scalar:s(Key)}, Flag).

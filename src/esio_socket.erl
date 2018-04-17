@@ -91,7 +91,8 @@ handle({get, Key}, Pipe, #{uri := Uri} = State) ->
       ]
    };
 
-handle({remove, Key}, Pipe, #{uri := Uri} = State) ->
+handle({remove, Key}, Pipe, #{uri := Uri} = State)
+ when is_binary(Key) ->
    {next_state, handle,
       [identity ||
          identity_key(Key, Uri),
@@ -100,6 +101,18 @@ handle({remove, Key}, Pipe, #{uri := Uri} = State) ->
          ack(Pipe, _)
       ]
    };
+
+handle({remove, Query}, Pipe, #{uri := Uri} = State)
+ when is_map(Query) ->
+   {next_state, handle,
+      [identity ||
+         identity_q(Uri, <<"_delete_by_query">>),
+         elastic_lookup(_, Query),
+         http(_, State),
+         ack(Pipe, _)
+      ]
+   };
+
 
 handle({update, Key, Json}, Pipe, #{uri := Uri} = State) ->
    {next_state, handle,
@@ -115,7 +128,7 @@ handle({update, Key, Json}, Pipe, #{uri := Uri} = State) ->
 handle({lookup, Query}, Pipe, #{uri := Uri} = State) ->
    {next_state, handle,
       [identity ||
-         identity_q(Uri),
+         identity_q(Uri, <<"_search">>),
          elastic_lookup(_, Query),
          http(_, State),
          ack(Pipe, _)
@@ -302,9 +315,9 @@ identity_update(Key, Uri) ->
 
 %%
 %%
-identity_q(Uri) ->
+identity_q(Uri, Op) ->
    [identity ||
       uri:segments(Uri),
-      lens:put(lens:hd(), _, [undefined, <<"_search">>]),
+      lens:put(lens:hd(), _, [undefined, Op]),
       uri:segments(_, Uri)
    ].
