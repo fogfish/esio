@@ -207,8 +207,8 @@ elastic_put_return([{Code, _, _}, #{<<"acknowledged">> := true, <<"index">> := K
 
 elastic_put_return([{Code, _, _}, #{<<"acknowledged">> := true}])
  when Code =:= 201 orelse Code =:= 200 ->
-   ok;
-   
+   {ok, acknowledged};
+
 elastic_put_return([{Code, _, _}, Reason]) ->
    {error, {Code, Reason}}.
 
