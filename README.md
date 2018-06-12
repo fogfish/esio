@@ -68,6 +68,10 @@ esio:start().
 esio:schema(Sock, #{settings => #{number_of_shards => 3, number_of_replicas => 1}}).
 
 %%
+%% append a new property to existed index
+esio:schema(Sock, #{properties => #{x => #{type => keyword}}}).
+
+%%
 %% put documents to your index
 esio:put(Sock, "1", #{title => <<"red color">>, tags => [red]}).
 esio:put(Sock, "2", #{title => <<"yellow color">>, tags => [yellow]}).

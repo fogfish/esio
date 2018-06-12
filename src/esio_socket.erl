@@ -52,6 +52,16 @@ handle(schema, Pipe, #{uri := Uri} = State) ->
       ]
    };
 
+handle({schema, #{properties := _} = Json}, Pipe, #{uri := Uri} = State) ->
+   {next_state, handle,
+      [identity ||
+         identity_schema(Uri),
+         elastic_put(_, Json),
+         http(_, State),
+         ack(Pipe, _)
+      ]
+   };
+
 handle({schema, Json}, Pipe, #{uri := Uri} = State) ->
    {next_state, handle,
       [identity ||
@@ -195,6 +205,10 @@ elastic_put_return([{Code, _, _}, #{<<"acknowledged">> := true, <<"index">> := K
  when Code =:= 201 orelse Code =:= 200 ->
    {ok, Key};
 
+elastic_put_return([{Code, _, _}, #{<<"acknowledged">> := true}])
+ when Code =:= 201 orelse Code =:= 200 ->
+   ok;
+   
 elastic_put_return([{Code, _, _}, Reason]) ->
    {error, {Code, Reason}}.
 
@@ -321,3 +335,12 @@ identity_q(Uri, Op) ->
       lens:put(lens:hd(), _, [undefined, Op]),
       uri:segments(_, Uri)
    ].
+
+%%
+identity_schema(Uri) ->
+   [identity ||
+      uri:segments(Uri),
+      lens:put(lens:hd(), _, [undefined, <<"_mapping">>, <<"_doc">>]),
+      uri:segments(_, Uri)   
+   ].
+
