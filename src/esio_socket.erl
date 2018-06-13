@@ -145,6 +145,16 @@ handle({lookup, Query}, Pipe, #{uri := Uri} = State) ->
       ]
    };
 
+handle({lookup, Bucket, Query}, Pipe, #{uri := Uri} = State) ->
+   {next_state, handle,
+      [identity ||
+         uri:segments([Bucket, <<"_search">>], Uri),
+         elastic_lookup(_, Query),
+         http(_, State),
+         ack(Pipe, _)
+      ]
+   };
+
 handle({http, _, passive}, Pipe, State) ->
    pipe:a(Pipe, {active, 1024}),
    {next_state, handle, State}.

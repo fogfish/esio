@@ -11,28 +11,35 @@
 -include("esio.hrl").
 
 
--export([stream/2, match/2]).
+-export([stream/2, stream/3, match/2, match/3]).
 
 %%
 %% 
-stream(Sock, #{sort := _} = Query) ->
+stream(Sock, Query) ->
+   stream(Sock, undefined, Query).
+
+stream(Sock, Bucket, #{sort := _} = Query) ->
    stream:takewhile(
       fun(X) -> X =/= eos end,
       stream:unfold(fun unfold/1, 
          #{
             state => [], 
             score =>  1,
-            sock  => Sock, 
+            sock  => Sock,
+            bucket=> Bucket,
             q     => Query#{size => ?CONFIG_STREAM_CHUNK}
          }
       )
    );
 
-stream(Sock, Query) ->
-   stream(Sock, Query#{sort => ['_doc']}).
+stream(Sock, Bucket, Query) ->
+   stream(Sock, Bucket, Query#{sort => ['_doc']}).
 
 match(Sock, Pattern) ->
-   stream(Sock, esio:pattern(Pattern)).
+   match(Sock, undefined, Pattern).
+
+match(Sock, Bucket, Pattern) ->
+   stream(Sock, Bucket, esio:pattern(Pattern)).
 
 
 %%
@@ -65,8 +72,10 @@ unfold(#{state := [#{<<"_score">> := Score} = Hit | Hits], score := Base} = Seed
 
 %%
 %%
-lookup(#{sock := Sock, q := Query}) ->
-   esio:lookup(Sock, Query).
+lookup(#{sock := Sock, bucket := undefined, q := Query}) ->
+   esio:lookup(Sock, Query, 60000);
+lookup(#{sock := Sock, bucket := Bucket, q := Query}) ->
+   esio:lookup(Sock, Bucket, Query, 60000).
 
 %%
 %%

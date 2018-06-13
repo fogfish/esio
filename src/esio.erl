@@ -46,10 +46,14 @@
 -export([
    lookup/2,
    lookup/3,
+   lookup/4,
    lookup_/2,
    lookup_/3,
+   lookup_/4,
    stream/2,
+   stream/3,
    match/2, 
+   match/3, 
    pattern/1
 ]).
 
@@ -60,6 +64,7 @@
 -type val()  :: #{}.
 -type req()  :: #{}.
 -type sock() :: pid().
+-type bucket() :: binary().
 
 
 %%
@@ -249,6 +254,7 @@ update_(Sock, Key, Val, Flag) ->
 %% synchronous lookup (execute elastic search query)
 -spec lookup(sock(), req()) -> datum:either( val() ).
 -spec lookup(sock(), req(), timeout()) -> datum:either( val() ).
+-spec lookup(sock(), bucket(), req(), timeout()) -> datum:either( val() ).
 
 lookup(Sock, Query) ->
    lookup(Sock, Query, ?TIMEOUT).
@@ -256,11 +262,14 @@ lookup(Sock, Query) ->
 lookup(Sock, Query, Timeout) ->
    req(Sock, {lookup, Query}, Timeout).
 
+lookup(Sock, Bucket, Query, Timeout) ->
+   req(Sock, {lookup, Bucket, Query}, Timeout).
 
 %%
 %% asynchronous lookup
 -spec lookup_(sock(), req()) -> ok.
 -spec lookup_(sock(), req(), boolean()) -> ok | reference().
+-spec lookup_(sock(), bucket(), req(), boolean()) -> ok | reference().
 
 lookup_(Sock, Query) ->
    lookup_(Sock, Query, true).
@@ -268,21 +277,31 @@ lookup_(Sock, Query) ->
 lookup_(Sock, Query, Flag) ->
    req_(Sock, {lookup, Query}, Flag).
 
+lookup_(Sock, Bucket, Query, Flag) ->
+   req_(Sock, {lookup, Bucket, Query}, Flag).
 
 %%
 %% return data stream corresponding to query
 -spec stream(sock(), req()) -> datum:stream(). 
+-spec stream(sock(), bucket(), req()) -> datum:stream(). 
 
 stream(Sock, Query) ->
    esio_stream:stream(Sock, Query).
+
+stream(Sock, Bucket, Query) ->
+   esio_stream:stream(Sock, Bucket, Query).
 
 %%
 %% pattern match data using elastic search boolean query
 %%    https://www.elastic.co/guide/en/elasticsearch/guide/current/bool-query.html
 -spec match(sock(), req()) -> datum:stream(). 
+-spec match(sock(), bucket(), req()) -> datum:stream(). 
 
 match(Sock, Pattern) ->
    esio_stream:match(Sock, Pattern).
+
+match(Sock, Bucket, Pattern) ->
+   esio_stream:match(Sock, Bucket, Pattern).
 
 %%
 %%
