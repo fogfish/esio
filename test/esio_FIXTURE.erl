@@ -105,14 +105,16 @@ elastic_ret_search() ->
                <<"_index">> => <<"bucket">>,
                <<"_score">> => 1.0,
                <<"_source">> => doc(),
-               <<"_type">> => <<"_doc">>
+               <<"_type">> => <<"_doc">>,
+               <<"sort">> => [1]
             },
             #{
                <<"_id">> => <<"key2">>,
                <<"_index">> => <<"bucket">>,
                <<"_score">> => 1.0,
                <<"_source">> => doc(),
-               <<"_type">> => <<"_doc">>
+               <<"_type">> => <<"_doc">>,
+               <<"sort">> => [2]
             }
          ],
          <<"max_score">> => 1.0,

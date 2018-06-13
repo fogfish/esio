@@ -419,8 +419,8 @@ elastic_stream(Response) ->
             <<"/_cat/nodes">> ->
                esio_FIXTURE:http(200, esio_FIXTURE:elastic_nodes());
             _ ->
-               case lens:get(lens:at(<<"from">>), jsx:decode(Json, [return_maps])) of
-                  0 ->
+               case lens:get(lens:at(<<"search_after">>), jsx:decode(Json, [return_maps])) of
+                  undefined ->
                      esio_FIXTURE:http(200, Response);
                   _ ->
                      esio_FIXTURE:http(200, esio_FIXTURE:elastic_ret_search_empty())

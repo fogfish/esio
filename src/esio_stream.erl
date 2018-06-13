@@ -6,6 +6,7 @@
 %%
 %% @doc
 %%   stream is continues query, it is designed as functional stream with side-effect
+%%   stream uses sort and search after features for continues stream sorting
 -module(esio_stream). 
 -include("esio.hrl").
 
@@ -14,7 +15,7 @@
 
 %%
 %% 
-stream(Sock, Query) ->
+stream(Sock, #{sort := _} = Query) ->
    stream:takewhile(
       fun(X) -> X =/= eos end,
       stream:unfold(fun unfold/1, 
@@ -22,18 +23,21 @@ stream(Sock, Query) ->
             state => [], 
             score =>  1,
             sock  => Sock, 
-            q     => Query#{from => 0, size => ?CONFIG_STREAM_CHUNK}
+            q     => Query#{size => ?CONFIG_STREAM_CHUNK}
          }
       )
-   ).
+   );
+
+stream(Sock, Query) ->
+   stream(Sock, Query#{sort => ['_doc']}).
 
 match(Sock, Pattern) ->
    stream(Sock, esio:pattern(Pattern)).
 
+
 %%
 %%
-unfold(#{state := [], q := #{from := From} = Query} = Seed)
- when From < 10000 ->
+unfold(#{state := []} = Seed) ->
    case lookup(Seed) of
       {ok, #{<<"hits">> := #{<<"hits">> := []}}} ->
          {eos, Seed};
@@ -41,20 +45,23 @@ unfold(#{state := [], q := #{from := From} = Query} = Seed)
       {ok, #{<<"hits">> := #{<<"hits">> := Hits, <<"max_score">> := Score}}} ->
          unfold(
             Seed#{
-               state => Hits, 
-               score => Score,
-               q     => Query#{from => From + length(Hits)}
+               state => Hits,
+               score => Score
             }
          )
-   end;   
-unfold(#{state := [], q := #{from := From}} = Seed)
- when From >= 10000 ->
-   {eos, Seed};
+   end;
 
-unfold(#{state := [H|T], score := null} = Seed) ->
-   {H, Seed#{state := T}};
-unfold(#{state := [#{<<"_score">> := Score} = H|T], score := Base} = Seed) ->
-   {H#{<<"_score">> := maybe_div(Score, Base)}, Seed#{state := T}}. 
+unfold(#{state := [Hit | Hits], score := null} = Seed) ->
+   {
+      Hit, 
+      search_after(Hit, Seed#{state := Hits})
+   };
+
+unfold(#{state := [#{<<"_score">> := Score} = Hit | Hits], score := Base} = Seed) ->
+   {
+      Hit#{<<"_score">> := maybe_div(Score, Base)}, 
+      search_after(Hit, Seed#{state := Hits})
+   }. 
 
 %%
 %%
@@ -68,3 +75,8 @@ maybe_div(Score, Base)
    Score / Base;
 maybe_div(Score, _) ->
    Score.
+
+%%
+%%
+search_after(#{<<"sort">> := Sort}, #{q := Query} = Seed) ->
+   Seed#{q => Query#{search_after => Sort}}.
