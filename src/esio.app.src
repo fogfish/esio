@@ -1,7 +1,7 @@
 {application, esio,
    [
       {description, "elastic search i/o"},
-      {vsn,         "1.0.3"},
+      {vsn,         "2.0.0"},
       {modules,     []},
       {registered,  [
          esio_sup
@@ -11,7 +11,6 @@
       {applications,[
          kernel
         ,stdlib
-        ,lager
         ,knet
         ,jsx
       ]},

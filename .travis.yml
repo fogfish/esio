@@ -1,14 +1,8 @@
-script: make && make test
+script: make
 language: erlang
 otp_release:
+   - 20.3
+   - 20.0
    - 19.2
-
-before_install:
-  - curl -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.2.1.deb && sudo dpkg -i --force-confnew elasticsearch-5.2.1.deb && sudo service elasticsearch restart
-
-addons:
-  apt:
-    packages:
-      - oracle-java8-set-default
-
+   - 18.3
 

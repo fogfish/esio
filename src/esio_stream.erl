@@ -6,34 +6,45 @@
 %%
 %% @doc
 %%   stream is continues query, it is designed as functional stream with side-effect
+%%   stream uses sort and search after features for continues stream sorting
 -module(esio_stream). 
 -include("esio.hrl").
 
--export([stream/3, match/3]).
+
+-export([stream/2, stream/3, match/2, match/3]).
 
 %%
 %% 
-stream(Sock, Uid, Query) ->
+stream(Sock, Query) ->
+   stream(Sock, undefined, Query).
+
+stream(Sock, Bucket, #{sort := _} = Query) ->
    stream:takewhile(
       fun(X) -> X =/= eos end,
       stream:unfold(fun unfold/1, 
          #{
             state => [], 
             score =>  1,
-            sock  => Sock, 
-            uid   => Uid, 
-            q     => Query#{from => 0, size => ?CONFIG_STREAM_CHUNK}
+            sock  => Sock,
+            bucket=> Bucket,
+            q     => Query#{size => ?CONFIG_STREAM_CHUNK}
          }
       )
-   ).
+   );
 
-match(Sock, Uid, Pattern) ->
-   stream(Sock, Uid, pattern_to_query(Pattern)).
+stream(Sock, Bucket, Query) ->
+   stream(Sock, Bucket, Query#{sort => ['_doc']}).
+
+match(Sock, Pattern) ->
+   match(Sock, undefined, Pattern).
+
+match(Sock, Bucket, Pattern) ->
+   stream(Sock, Bucket, esio:pattern(Pattern)).
+
 
 %%
 %%
-unfold(#{state := [], q := #{from := From} = Query} = Seed)
- when From < 10000 ->
+unfold(#{state := []} = Seed) ->
    case lookup(Seed) of
       {ok, #{<<"hits">> := #{<<"hits">> := []}}} ->
          {eos, Seed};
@@ -41,35 +52,30 @@ unfold(#{state := [], q := #{from := From} = Query} = Seed)
       {ok, #{<<"hits">> := #{<<"hits">> := Hits, <<"max_score">> := Score}}} ->
          unfold(
             Seed#{
-               state => Hits, 
-               score => Score,
-               q     => Query#{from => From + length(Hits)}
+               state => Hits,
+               score => Score
             }
          )
-   end;   
-unfold(#{state := [], q := #{from := From}} = Seed)
- when From >= 10000 ->
-   {eos, Seed};
+   end;
 
-unfold(#{state := [H|T], score := null} = Seed) ->
-   {H, Seed#{state := T}};
-unfold(#{state := [#{<<"_score">> := Score} = H|T], score := Base} = Seed) ->
-   {H#{<<"_score">> := maybe_div(Score, Base)}, Seed#{state := T}}. 
+unfold(#{state := [Hit | Hits], score := null} = Seed) ->
+   {
+      Hit, 
+      search_after(Hit, Seed#{state := Hits})
+   };
 
-%%
-%%
-lookup(#{sock := Sock, uid := Uid, q := Query}) ->
-   esio:lookup(Sock, Uid, Query).
-
+unfold(#{state := [#{<<"_score">> := Score} = Hit | Hits], score := Base} = Seed) ->
+   {
+      Hit#{<<"_score">> := maybe_div(Score, Base)}, 
+      search_after(Hit, Seed#{state := Hits})
+   }. 
 
 %%
 %%
-pattern_to_query(Pattern) ->
-   #{'query' => 
-      #{bool => 
-         #{must => [#{match => maps:put(Key, Val, #{})} || {Key, Val} <- maps:to_list(Pattern)] }
-      }
-   }.
+lookup(#{sock := Sock, bucket := undefined, q := Query}) ->
+   esio:lookup(Sock, Query, 60000);
+lookup(#{sock := Sock, bucket := Bucket, q := Query}) ->
+   esio:lookup(Sock, Bucket, Query, 60000).
 
 %%
 %%
@@ -78,3 +84,8 @@ maybe_div(Score, Base)
    Score / Base;
 maybe_div(Score, _) ->
    Score.
+
+%%
+%%
+search_after(#{<<"sort">> := Sort}, #{q := Query} = Seed) ->
+   Seed#{q => Query#{search_after => Sort}}.

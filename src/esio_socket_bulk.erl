@@ -12,6 +12,7 @@
 -author('dmitry.kolesnikov@zalando.fi').
 
 -include("esio.hrl").
+-include_lib("datum/include/datum.hrl").
 
 -export([
    start_link/2,
@@ -19,7 +20,6 @@
    free/2,
    handle/3
 ]).
-
 
 %%-----------------------------------------------------------------------------
 %%
@@ -31,17 +31,18 @@ start_link(Uri, Opts) ->
    pipe:start_link(?MODULE, [Uri, Opts], []).   
 
 init([Uri, Opts]) ->
+   [200 | State] = http( elastic_ping(Uri, Opts) ),   
    {ok, handle, 
-      #{
-         uri   => Uri, 
-         opts  => Opts,
-         t     => tempus:timer(opts:val(t, ?CONFIG_T_SYNC, Opts), sync),
+      State#{
+         uri   => Uri,
          n     => opts:val(n, ?CONFIG_BULK_CHUNK, Opts),
+         t     => tempus:timer(opts:val(t, ?CONFIG_T_SYNC, Opts), sync),
          chunk => q:new()
       }
    }.
 
-free(_, _) ->
+free(_, State) ->
+   [identity || elastic_sync(State), http(_)],
    ok.
 
 %%-----------------------------------------------------------------------------
@@ -50,60 +51,28 @@ free(_, _) ->
 %%
 %%-----------------------------------------------------------------------------
 
-handle({put, _, _} = Req, Pipe, #{uri := Uri, opts := Opts, chunk := Chunk0, n := N} = State0) ->
-   case 
-      {q:enq(Req, Chunk0), deq:length(Chunk0) + 1}
-   of
-      {Chunk1, Len} when Len >= N ->
-         {next_state, handle,
-            http_return(Pipe, State0,
-               [either ||
-                  identity_bulk(Uri),
-                  http_bulk(_, Chunk1, Opts),
-                  http_run(_, State0)
-               ]
-            )
-         };
-      
-      {Chunk1, _} ->
-         pipe:a(Pipe, ok),
-         {next_state, handle, State0#{chunk => Chunk1}}
-   end;
+handle({put, _, _} = Req, Pipe, State) ->
+   {next_state, handle, 
+      [identity ||
+         enq(Req, State),
+         elastic_bulk(_),
+         http(_),
+         ack(Pipe, _)
+      ]
+   };
 
-handle(sync, _, #{uri := Uri, opts := Opts, chunk := Chunk0, t := T} = State0) ->
-   case deq:length(Chunk0) of
-      0 -> 
-         {next_state, handle,
-            State0#{t => tempus:reset(T, sync)}
-         };
-      _ ->
-         {next_state, handle,
-            http_return(State0,
-               [either ||
-                  identity_bulk(Uri),
-                  http_bulk(_, Chunk0, Opts),
-                  http_run(_, State0)
-               ]
-            )
-         }
-   end;
+handle(sync, _, State) ->
+   {next_state, handle,
+      [identity ||
+         elastic_sync(State),
+         http(_),
+         timeout(_)
+      ]
+   };
 
-handle(close, _Pipe, #{uri := Uri, opts := Opts, chunk := Chunk0, t := T} = State0) ->
-   %% We should not discard existing messages so let's send them immediately, and then stop.
-   tempus:cancel(T),
-   case deq:length(Chunk0) of
-      0 -> ok;
-      _ ->
-         http_return(State0,
-                     [either ||
-                        identity_bulk(Uri),
-                        http_bulk(_, Chunk0, Opts),
-                        http_run(_, State0)
-                     ]
-                  )
-   end,
-   {stop, normal, State0#{chunk => q:new()}}.
-
+handle({http, _, passive}, Pipe, State) ->
+   pipe:a(Pipe, {active, 1024}),
+   {next_state, handle, State}.
 
 %%%----------------------------------------------------------------------------   
 %%%
@@ -112,77 +81,104 @@ handle(close, _Pipe, #{uri := Uri, opts := Opts, chunk := Chunk0, t := T} = Stat
 %%%----------------------------------------------------------------------------   
 
 %%
-%%
-http_run(Http, State) ->
-   {ok, Http(State)}.
+enq(Req, #{chunk := Chunk} = State) ->
+   State#{chunk => q:enq(Req, Chunk)}.
 
 %%
+http([?None | State0]) ->
+   [ok | State0];
+
+http([Http | State0]) ->
+   case Http(State0) of
+      [ok | State1] ->
+         [ok | maps:without([req, ret], State1#{chunk => q:new()})];
+      [Result | State1] ->
+         [Result | maps:without([req, ret], State1)]
+   end;
+
+http(Http) ->
+   http([Http | #{}]).
+
 %%
-http_return(Pipe, _, {ok, [Result | State]}) -> 
+ack(Pipe, [Result | State]) ->
    pipe:a(Pipe, Result),
-   State#{chunk => q:new()};
-
-http_return(Pipe, State, {error, _} = Error) ->
-   pipe:a(Pipe, Error),
    State.
 
 %%
-%%
-http_return(_, {ok, [_ | State]}) -> 
-   State#{chunk => q:new()};
-
-http_return(State, {error, _}) ->
-   State.
+timeout([_ | #{t := T} = State]) ->
+   State#{t => tempus:reset(T, sync)}.
 
 %%
-%%
-http_bulk(Uri, Chunk, Opts) ->
-   {ok, 
-      [m_http ||
-         cats:new(Uri, Opts),
-         cats:x('PUT'),
-         cats:h('Content-Type', "application/json"),
-         cats:h('Transfer-Encoding', "chunked"),
-         cats:h('Connection', 'keep-alive'),
-         cats:d(encode(uri:new(Uri), Chunk)),
-         cats:request(60000),
-         cats:unit(http_bulk_return(_))
-      ]
-   }.
+elastic_ping(Uri, Opts) ->
+   [m_http ||
+      cats:new(uri:path(<<"/_cat/nodes">>, Uri)),
+      cats:so(Opts),
+      cats:method('GET'),
+      cats:header('Connection', 'keep-alive'),
+      cats:request(60000),
+      cats:require(code, 200)
+   ].
 
-http_bulk_return([{200, _, _}|_]) ->
+%%
+elastic_bulk(#{chunk := Chunk, n := N} = State) ->
+   case q:length(Chunk) of
+      X when X >= N ->
+         [elastic_bulk_req(State) | State];
+      _ ->
+         [?None | State]
+   end.
+
+elastic_bulk_req(#{chunk := Chunk, uri := Uri}) ->
+   [m_http ||
+      cats:new( uri:path(<<"/_bulk">>, Uri) ),
+      cats:method('POST'),
+      cats:header('Content-Type', "application/x-ndjson"),
+      cats:header('Transfer-Encoding', "chunked"),
+      cats:header('Connection', 'keep-alive'),
+      cats:payload( encode(bucket(Uri), Chunk) ),
+      cats:request(60000),
+      cats:unit( elastic_bulk_ret(_) )
+   ].
+
+elastic_bulk_ret([{200, _, _}, _Json]) ->
    %% @todo: bulk api response is not very efficient to ack the request.
    %%        the library implements fire-and-forget  
+   %%        however, it is possible to analyses results of bulk response and
+   %%        filter out successful objects
    ok;
-http_bulk_return([{Code, _, _}|_]) ->
-   {error, Code}.
+elastic_bulk_ret([{Code, _, _}, Reason]) ->
+   {error, {Code, Reason}}.
 
 
 %%
-%%
-identity_bulk(Uri) ->
-   case uri:segments(Uri) of
-      [Cask | _] -> 
-         {ok, uri:s(uri:segments([Cask, <<"_bulk">>], Uri))};
-      Path -> 
-         {error, {badkey, Path}}
+elastic_sync(#{chunk := Chunk} = State) ->
+   case q:length(Chunk) of
+      X when X > 0 ->
+         [elastic_bulk_req(State) | State];
+      _ ->
+         [?None | State]
    end.
 
+
+%%
+bucket(Uri) ->
+   hd(uri:segments(Uri)).
+
 %%
 %%
-encode(_Uri, {}) ->
-   [];
-encode(Uri, Chunk) ->
-   case deq:head(Chunk) of
-      undefined -> [];
-      {_, Key, Val} -> 
-         [encode(Uri, Key, Val) | encode(Uri, deq:tail(Chunk))]
-   end.
+encode(Bucket, Chunk) ->
+   [identity ||
+      q:map(fun({put, Key, Val}) -> encode(Bucket, Key, Val) end, Chunk),
+      q:list(_),
+      erlang:iolist_to_binary(_)
+   ].
 
-encode(Uri, {urn, Type, Key}, Val) ->
-   Cask = hd(uri:segments(Uri)),
-   Head = jsx:encode(#{index => 
-      #{<<"_index">> => uri:unescape(Cask), <<"_type">> => uri:unescape(Type), <<"_id">> => uri:unescape(Key)}
-   }),
-   <<Head/binary, $\n, Val/binary, $\n>>.
-
+encode(Bucket, Key, Val) ->
+   Head = #{index => 
+      #{
+         <<"_index">> => Bucket, 
+         <<"_type">>  => <<"_doc">>, 
+         <<"_id">>    => Key
+      }
+   },
+   <<(jsx:encode(Head))/binary, $\n, (jsx:encode(Val))/binary, $\n>>.

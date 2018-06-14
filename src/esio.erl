@@ -14,38 +14,63 @@
 -export([
    socket/1,
    socket/2,
-   close/1
+   close/1,
+   schema/1,
+   schema/2,
+   schema/3
 ]).
 %% key/value (hash-map like interface)
 -export([
-   put/3, put/4, put_/3, put_/4,
-   add/2, add/3, add_/2, add_/3,
-   get/2, get/3, get_/2, get_/3,
-   remove/2, remove/3, remove_/2, remove_/3
+   put/3,
+   put/4,
+   put_/3,
+   put_/4,
+   add/2,
+   add/3,
+   add_/2,
+   add_/3,
+   get/2,
+   get/3,
+   get_/2,
+   get_/3,
+   remove/2,
+   remove/3,
+   remove_/2,
+   remove_/3,
+   update/3,
+   update/4,
+   update_/3,
+   update_/4
 ]).
 %% query and stream interface
 -export([
-   lookup/2, lookup/3, lookup/4, lookup_/2, lookup_/3, lookup_/4,
-   stream/2, stream/3, 
-   match/2,  match/3,
+   lookup/2,
+   lookup/3,
+   lookup/4,
+   lookup_/2,
+   lookup_/3,
+   lookup_/4,
+   stream/2,
+   stream/3,
+   match/2, 
+   match/3, 
    pattern/1
 ]).
 
 %%
 %% data types
 -type url()  :: uri:uri().
--type key()  :: {urn, type(), uid()} | uid().
--type type() :: binary().
--type uid()  :: binary().
--type val()  :: map().
--type req()  :: map().
+-type key()  :: datum:option(_).
+-type val()  :: #{}.
+-type req()  :: #{}.
 -type sock() :: pid().
+-type bucket() :: binary().
 
 
 %%
 %% start application (RnD mode)
-start() -> 
-   applib:boot(?MODULE, []).
+start() ->
+   application:ensure_all_started(?MODULE).
 
 %%
 %% create communication socket to Elastic Search.
@@ -56,8 +81,8 @@ start() ->
 %%   * n         - number of messages to buffer in bulk request 
 %%   * t         - timeout to flush bulk request buffer
 %%
--spec socket(url()) -> {ok, sock()} | {error, _}.
--spec socket(url(), [_]) -> {ok, sock()} | {error, _}.
+-spec socket(url()) -> datum:either( sock() ).
+-spec socket(url(), [_]) -> datum:either( sock() ).
 
 socket(Uri) ->
    socket(Uri, []).
@@ -78,19 +103,37 @@ socket(Uri, Opts) ->
 -spec close(sock()) -> ok.
 
 close(Sock) ->
-   pipe:send(Sock, close).
+   pipe:free(Sock).
+
+%%
+%% read index schema
+-spec schema(sock()) -> datum:either( val() ).
+
+schema(Sock) ->
+   req(Sock, schema, ?TIMEOUT).
+
+%%
+%% deploy index schema
+-spec schema(sock(), val()) -> datum:either( key() ).
+-spec schema(sock(), val(), timeout()) -> datum:either( key() ).
+
+schema(Sock, Json) ->
+   schema(Sock, Json, ?TIMEOUT).
+
+schema(Sock, Json, Timeout) ->
+   req(Sock, {schema, Json}, Timeout).
 
 
 %%
 %% synchronous put operation
--spec put(sock(), key(), val()) -> {ok, _} | {error, _}.
--spec put(sock(), key(), val(), timeout()) -> {ok, _} | {error, _}.
+-spec put(sock(), key(), val()) -> datum:either( key() ).
+-spec put(sock(), key(), val(), timeout()) -> datum:either( key() ).
 
 put(Sock, Key, Val) ->
    put(Sock, Key, Val, ?TIMEOUT).
 
 put(Sock, Key, Val, Timeout) ->
-   req(Sock, {put, identity(Key), jsx:encode(Val)}, Timeout).
+   req(Sock, {put, scalar:s(Key), Val}, Timeout).
 
 
 %%
@@ -102,19 +145,19 @@ put_(Sock, Key, Val) ->
    put_(Sock, Key, Val, false).
 
 put_(Sock, Key, Val, Flag) ->
-   req_(Sock, {put, identity(Key), jsx:encode(Val)}, Flag).
+   req_(Sock, {put, scalar:s(Key), Val}, Flag).
 
 
 %%
 %%
--spec add(sock(), val()) -> {ok, _} | {error, _}.
--spec add(sock(), val(), timeout()) -> {ok, _} | {error, _}.
+-spec add(sock(), val()) -> datum:either( key() ).
+-spec add(sock(), val(), timeout()) -> datum:either( key() ).
 
 add(Sock, Val) ->
    add(Sock, Val, ?TIMEOUT).
 
 add(Sock, Val, Timeout) ->
-   req(Sock, {add, jsx:encode(Val)}, Timeout).
+   req(Sock, {add, Val}, Timeout).
 
 
 %%
@@ -126,112 +169,139 @@ add_(Sock, Val) ->
    add_(Sock, Val, false).
 
 add_(Sock, Val, Flag) ->
-   req_(Sock, {add, jsx:encode(Val)}, Flag).
+   req_(Sock, {add, Val}, Flag).
 
 
 %%
 %% synchronous get operation
--spec get(sock(), key()) -> {ok, val()} | {error, _}.
--spec get(sock(), key(), timeout()) -> {ok, val()} | {error, _}.
+-spec get(sock(), key()) -> datum:either( val() ).
+-spec get(sock(), key(), timeout()) -> datum:either( val() ).
 
 get(Sock, Key) ->
    get(Sock, Key, ?TIMEOUT).
 
 get(Sock, Key, Timeout) ->
-   req(Sock, {get, identity(Key)}, Timeout).
+   req(Sock, {get, scalar:s(Key)}, Timeout).
 
 
 %%
 %% asynchronous get operation
--spec get_(sock(), key()) -> {ok, val()} | {error, _}.
+-spec get_(sock(), key()) -> ok.
 -spec get_(sock(), key(), boolean()) -> ok | reference().
 
 get_(Sock, Key) ->
    get_(Sock, Key, true).
 
 get_(Sock, Key, Flag) ->
-   req_(Sock, {get, identity(Key)}, Flag).
+   req_(Sock, {get, scalar:s(Key)}, Flag).
 
 
 %%
-%% synchronous remove operation
--spec remove(sock(), key()) -> ok | {error, _}.
--spec remove(sock(), key(), timeout()) -> ok | {error, _}.
+%% synchronous remove operation either by key or query
+-spec remove(sock(), key() | req()) -> datum:either( key() ).
+-spec remove(sock(), key() | req(), timeout()) -> datum:either( key() ).
 
 remove(Sock, Key) ->
    remove(Sock, Key, ?TIMEOUT).
 
+remove(Sock, Query, Timeout)
+ when is_map(Query) ->
+   req(Sock, {remove, Query}, Timeout);
+
 remove(Sock, Key, Timeout) ->
-   req(Sock, {remove, identity(Key)}, Timeout).
+   req(Sock, {remove, scalar:s(Key)}, Timeout).
 
 
 %%
 %% asynchronous get operation
--spec remove_(sock(), key()) -> {ok, val()} | {error, _}.
+-spec remove_(sock(), key()) -> ok.
 -spec remove_(sock(), key(), boolean()) -> ok | reference().
 
 remove_(Sock, Key) ->
    remove_(Sock, Key, false).
 
-remove_(Sock, Key, Flag) ->
-   req_(Sock, {remove, identity(Key)}, Flag).
+remove_(Sock, Query, Timeout)
+ when is_map(Query) ->
+   req_(Sock, {remove, Query}, Timeout);
 
+remove_(Sock, Key, Flag) ->
+   req_(Sock, {remove, scalar:s(Key)}, Flag).
+
+%%
+%% synchronous put operation
+-spec update(sock(), key(), val()) -> datum:either( key() ).
+-spec update(sock(), key(), val(), timeout()) -> datum:either( key() ).
+
+update(Sock, Key, Val) ->
+   update(Sock, Key, Val, ?TIMEOUT).
+
+update(Sock, Key, Val, Timeout) ->
+   req(Sock, {update, scalar:s(Key), Val}, Timeout).
+
+
+%%
+%% asynchronous put operation
+-spec update_(sock(), key(), val()) -> ok.
+-spec update_(sock(), key(), val(), boolean()) -> ok | reference().
+
+update_(Sock, Key, Val) ->
+   update_(Sock, Key, Val, false).
+
+update_(Sock, Key, Val, Flag) ->
+   req_(Sock, {update, scalar:s(Key), Val}, Flag).
 
 %%
 %% synchronous lookup (execute elastic search query)
--spec lookup(sock(), req()) -> {ok, val()} | {error, _}.
--spec lookup(sock(), key(), req()) -> {ok, val()} | {error, _}.
--spec lookup(sock(), key(), req(), timeout()) -> {ok, val()} | {error, _}.
+-spec lookup(sock(), req()) -> datum:either( val() ).
+-spec lookup(sock(), req(), timeout()) -> datum:either( val() ).
+-spec lookup(sock(), bucket(), req(), timeout()) -> datum:either( val() ).
 
 lookup(Sock, Query) ->
-   lookup(Sock, ?WILDCARD, Query).
+   lookup(Sock, Query, ?TIMEOUT).
 
-lookup(Sock, Uid, Query) ->
-   lookup(Sock, Uid, Query, ?TIMEOUT).
+lookup(Sock, Query, Timeout) ->
+   req(Sock, {lookup, Query}, Timeout).
 
-lookup(Sock, Uid, Query, Timeout) ->
-   req(Sock, {lookup, identity(Uid), jsx:encode(Query)}, Timeout).
+lookup(Sock, Bucket, Query, Timeout) ->
+   req(Sock, {lookup, Bucket, Query}, Timeout).
 
 %%
 %% asynchronous lookup
--spec lookup_(sock(), req()) -> ok | reference().
--spec lookup_(sock(), key(), req()) -> ok | reference().
--spec lookup_(sock(), key(), req(), boolean()) -> ok | reference().
+-spec lookup_(sock(), req()) -> ok.
+-spec lookup_(sock(), req(), boolean()) -> ok | reference().
+-spec lookup_(sock(), bucket(), req(), boolean()) -> ok | reference().
 
 lookup_(Sock, Query) ->
-   lookup_(Sock, ?WILDCARD, Query).
+   lookup_(Sock, Query, true).
 
-lookup_(Sock, Uid, Query) ->
-   lookup_(Sock, Uid, Query, true).
+lookup_(Sock, Query, Flag) ->
+   req_(Sock, {lookup, Query}, Flag).
 
-lookup_(Sock, Uid, Query, Flag) ->
-   req_(Sock, {lookup, identity(Uid), jsx:encode(Query)}, Flag).
-   
+lookup_(Sock, Bucket, Query, Flag) ->
+   req_(Sock, {lookup, Bucket, Query}, Flag).
 
 %%
 %% return data stream corresponding to query
 -spec stream(sock(), req()) -> datum:stream(). 
--spec stream(sock(), key(), req()) -> datum:stream(). 
+-spec stream(sock(), bucket(), req()) -> datum:stream(). 
 
 stream(Sock, Query) ->
-   stream(Sock, ?WILDCARD, Query).
+   esio_stream:stream(Sock, Query).
 
-stream(Sock, Uid, Query)
- when is_map(Query) ->
-   esio_stream:stream(Sock, identity(Uid), Query).
+stream(Sock, Bucket, Query) ->
+   esio_stream:stream(Sock, Bucket, Query).
 
 %%
 %% pattern match data using elastic search boolean query
 %%    https://www.elastic.co/guide/en/elasticsearch/guide/current/bool-query.html
 -spec match(sock(), req()) -> datum:stream(). 
--spec match(sock(), key(), req()) -> datum:stream(). 
+-spec match(sock(), bucket(), req()) -> datum:stream(). 
 
 match(Sock, Pattern) ->
-   match(Sock, ?WILDCARD, Pattern).
+   esio_stream:match(Sock, Pattern).
 
-match(Sock, Uid, Pattern)
- when is_map(Pattern) ->
-   esio_stream:match(Sock, identity(Uid), Pattern).
+match(Sock, Bucket, Pattern) ->
+   esio_stream:match(Sock, Bucket, Pattern).
 
 %%
 %%
@@ -262,13 +332,5 @@ req_(Sock, Req, true) ->
    pipe:cast(Sock, Req);
 
 req_(Sock, Req, false) ->
-   pipe:send(Sock, Req), ok.
-
-%%
-%%
-identity({urn, Type, Key}) ->
-   {urn, scalar:s(Type), scalar:s(Key)};
-identity(Key) ->
-   {urn, undefined, scalar:s(Key)}.
-
-
+   pipe:send(Sock, Req), 
+   ok.
