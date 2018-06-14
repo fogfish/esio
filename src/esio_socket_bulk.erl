@@ -161,20 +161,8 @@ elastic_sync(#{chunk := Chunk} = State) ->
 
 
 %%
-<<<<<<< HEAD
 bucket(Uri) ->
    hd(uri:segments(Uri)).
-=======
-%%
-encode(_Uri, {}) ->
-   [];
-encode(Uri, Chunk) ->
-   case deq:head(Chunk) of
-      undefined -> [];
-      {_, Key, Val} -> 
-         [encode(Uri, Key, Val) | encode(Uri, deq:tail(Chunk))]
-   end.
->>>>>>> github/master
 
 %%
 %%
