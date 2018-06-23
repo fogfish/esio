@@ -310,10 +310,15 @@ match(Sock, Bucket, Pattern) ->
 pattern(Pattern) ->
    #{'query' => 
       #{bool => 
-         #{must => [#{match => maps:put(Key, Val, #{})} || {Key, Val} <- maps:to_list(Pattern)] }
+         #{must => lists:flatten([pattern(Key, Val) || {Key, Val} <- maps:to_list(Pattern)]) }
       }
    }.
 
+pattern(Key, Val)
+ when is_list(Val) ->
+   [pattern(Key, X) || X <- Val];
+pattern(Key, Val) ->
+   #{match => #{Key => Val}}.
 
 %%-----------------------------------------------------------------------------
 %%
