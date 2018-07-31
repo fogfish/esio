@@ -39,7 +39,10 @@ match(Sock, Pattern) ->
    match(Sock, undefined, Pattern).
 
 match(Sock, Bucket, Pattern) ->
-   stream(Sock, Bucket, esio:pattern(Pattern)).
+   %% Note: usage of _id based sorting returns consistent document stream
+   %%       document _id based sorting has dependencies to shards
+   Query = esio:pattern(Pattern),
+   stream(Sock, Bucket, Query#{sort => ['_id']}).
 
 
 %%
