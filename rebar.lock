@@ -1,32 +1,28 @@
 {"1.1.0",
-[{<<"datum">>,{pkg,<<"datum">>,<<"4.3.2">>},1},
+[{<<"datum">>,{pkg,<<"datum">>,<<"4.3.6">>},1},
  {<<"feta">>,
   {git,"https://github.com/fogfish/feta",
-       {ref,"0621beb5ed4d02f1fe8b109c8a9fcbffc42c5730"}},
+       {ref,"c5d251b3f995b96afd5e8ec7da61516842aa658c"}},
   1},
- {<<"goldrush">>,{pkg,<<"goldrush">>,<<"0.1.9">>},1},
  {<<"htcodec">>,
   {git,"https://github.com/kfsm/htcodec",
        {ref,"2c9293e659fc1b000038862201b3dbd90ae6e308"}},
   1},
  {<<"htstream">>,
   {git,"https://github.com/kfsm/htstream",
-       {ref,"2a6519efd737eebb70cb9518335f4baf3f479913"}},
+       {ref,"3a393c3595232bf9cfe4d7ae0a4e09acadb1deda"}},
   1},
  {<<"jsx">>,{pkg,<<"jsx">>,<<"2.9.0">>},0},
  {<<"knet">>,
-  {git,"https://github.com/fogfish/knet",
-       {ref,"259db267a26ee2f682aea4d16fe2f003c21ecbec"}},
+  {git,"https://github.com/kfsm/knet",
+       {ref,"85343f9ba71c8d4f028e3cae3e2eea929addfbc1"}},
   0},
- {<<"lager">>,{pkg,<<"lager">>,<<"3.6.1">>},0},
- {<<"meck">>,{pkg,<<"meck">>,<<"0.8.9">>},0},
- {<<"pipe">>,{pkg,<<"pipes">>,<<"1.7.0">>},1}]}.
+ {<<"meck">>,{pkg,<<"meck">>,<<"0.8.12">>},0},
+ {<<"pipe">>,{pkg,<<"pipes">>,<<"2.0.0">>},1}]}.
 [
 {pkg_hash,[
- {<<"datum">>, <<"841549936326B2D660D267D52B3DC7B16457CC174CBACF57E655D79F4BAB924E">>},
- {<<"goldrush">>, <<"F06E5D5F1277DA5C413E84D5A2924174182FB108DABB39D5EC548B27424CD106">>},
+ {<<"datum">>, <<"07AA802EF8C68FC990164BB398890FBE03FF4FA30570C37BF6D836A4FDF27D54">>},
  {<<"jsx">>, <<"D2F6E5F069C00266CAD52FB15D87C428579EA4D7D73A33669E12679E203329DD">>},
- {<<"lager">>, <<"9D29C5FF7F926D25ECD9899990867C9152DCF34EEE65BAC8EC0DFC0D16A26E0C">>},
- {<<"meck">>, <<"64C5C0BD8BCCA3A180B44196265C8ED7594E16BCC845D0698EC6B4E577F48188">>},
- {<<"pipe">>, <<"30648602EEBA882C566277593BC72EC503854A103A52880AB5C4C5039DFA27C3">>}]}
+ {<<"meck">>, <<"1F7B1A9F5D12C511848FEC26BBEFD09A21E1432EADB8982D9A8ACEB9891A3CF2">>},
+ {<<"pipe">>, <<"A10DF54F1EC80EAA491EE7BD689C794886E6E668A9F05436514695E9CF5370AE">>}]}
 ].

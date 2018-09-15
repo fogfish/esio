@@ -31,7 +31,7 @@ start_link(Uri, Opts) ->
    pipe:start_link(?MODULE, [Uri, Opts], []).   
 
 init([Uri, Opts]) ->
-   [200 | State] = http( elastic_ping(Uri, Opts) ),   
+   [200 | State] = http( elastic_ping(Uri, maps:without([n, t], maps:from_list(Opts -- [bulk]))) ),
    {ok, handle, 
       State#{
          uri   => Uri,
