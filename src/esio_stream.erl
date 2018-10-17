@@ -58,7 +58,10 @@ unfold(#{state := []} = Seed) ->
                state => Hits,
                score => Score
             }
-         )
+         );
+
+      {error, _} ->
+         {eos, Seed}
    end;
 
 unfold(#{state := [Hit | Hits], score := null} = Seed) ->
