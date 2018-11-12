@@ -66,3 +66,12 @@ esio:get(Sock, "1").
 esio:remove(Sock, "1").
 ```
 
+## enable side-cache
+
+Note, this project do not add dependencies to cache library. You need to add it to your application
+
+```
+{ok, _} = cache:start_link(my_cache, [{n, 10}, {ttl, 60}]).
+{ok, Sock} = esio:socket("http://127.0.0.1:9200/twitter", [{cache, my_cache}]).
+```
+
