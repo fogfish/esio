@@ -32,8 +32,9 @@ start_link(Uri, Opts) ->
    pipe:start_link(?MODULE, [Uri, Opts], []).   
 
 init([Uri, Opts]) ->
+   Cache = opts:val(cache, undefined, Opts),
    [200 | State] = http( elastic_ping(Uri, maps:from_list(Opts)) ),
-   {ok, handle, State#{uri => Uri}}.
+   {ok, handle, State#{uri => Uri, cache => Cache}}.
 
 free(_, _) ->
    ok.
@@ -140,7 +141,7 @@ handle({lookup, Query}, Pipe, #{uri := Uri} = State) ->
       [identity ||
          identity_q(Uri, <<"_search">>),
          elastic_lookup(_, Query),
-         http(_, State),
+         cacheable(_, Query, State),
          ack(Pipe, _)
       ]
    };
@@ -150,7 +151,7 @@ handle({lookup, Bucket, Query}, Pipe, #{uri := Uri} = State) ->
       [identity ||
          uri:segments([Bucket, <<"_search">>], Uri),
          elastic_lookup(_, Query),
-         http(_, State),
+         cacheable(_, Query, State),
          ack(Pipe, _)
       ]
    };
@@ -174,6 +175,21 @@ http(Http) ->
 http(Http, State0) ->
    [Result | State1] = Http(State0),
    [Result | maps:without([req, ret], State1)].
+
+%%
+cacheable(Http, _Query, #{cache := undefined} = State) ->
+   http(Http, State);
+
+cacheable(Http, Query, #{cache := Cache} = State) ->
+   Key = crypto:hash(sha, jsx:encode(Query)),
+   case cache:get(Cache, Key) of
+      undefined ->
+         [Value | _] = Result = Http(State),
+         cache:put(Cache, Key, Value),
+         Result;
+      Value ->
+         [Value | State]
+   end.
 
 
 %%
@@ -353,4 +369,5 @@ identity_schema(Uri) ->
       lens:put(lens:hd(), _, [undefined, <<"_mapping">>, <<"_doc">>]),
       uri:segments(_, Uri)   
    ].
+
 

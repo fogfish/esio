@@ -16,8 +16,9 @@ Unlike other, similar projects, *esio* does not aim to provide a generic HTTP-pr
 * offers **query templates** to counter the complexity of DSL 
 * provides Erlang-friendly **pattern matching** for document lookup
 * uses actor models for real-time **data streaming**
-* provides interface to write **large bulks** of document to storage 
+* provides interface to write **large bulks** of document to storage
 * supports [**update api**](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html)
+* integrates [in-memory cache](https://github.com/fogfish/cache)
 
 See more details about the library at
 * [design considerations](doc/design.md)
