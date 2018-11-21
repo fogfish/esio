@@ -33,7 +33,7 @@ start_link(Uri, Opts) ->
 
 init([Uri, Opts]) ->
    Cache = opts:val(cache, undefined, Opts),
-   [200 | State] = http( elastic_ping(Uri, maps:from_list(Opts)) ),
+   [_ | State] = http( elastic_ping(Uri, maps:from_list(Opts)) ),
    {ok, handle, State#{uri => Uri, cache => Cache}}.
 
 free(_, _) ->
@@ -205,8 +205,7 @@ elastic_ping(Uri, Opts) ->
       cats:so(Opts),
       cats:method('GET'),
       cats:header('Connection', 'keep-alive'),
-      cats:request(60000),
-      cats:require(code, 200)
+      cats:request(60000)
    ].
 
 
