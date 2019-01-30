@@ -1,7 +1,7 @@
 {application, esio,
    [
       {description, "elastic search i/o"},
-      {vsn,         "2.0.6"},
+      {vsn,         "2.0.7"},
       {modules,     []},
       {registered,  [
          esio_sup
