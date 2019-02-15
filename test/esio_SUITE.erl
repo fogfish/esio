@@ -120,7 +120,7 @@ schema(_Config) ->
    Expect = esio_FIXTURE:bucket(),
 
    {ok, Sock} = esio:socket("http://localhost:9200/bucket", []),
-   {ok, Expect} = esio:schema(Sock, #{}),
+   {ok, Expect} = esio:create_schema(Sock, #{}),
    ok = esio:close(Sock),
 
    true = meck:validate(m_http).

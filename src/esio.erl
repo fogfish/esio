@@ -17,7 +17,8 @@
    close/1,
    schema/1,
    schema/2,
-   schema/3
+   create_schema/2,
+   create_schema/3
 ]).
 %% key/value (hash-map like interface)
 -export([
@@ -108,19 +109,24 @@ close(Sock) ->
 %%
 %% read index schema
 -spec schema(sock()) -> datum:either( val() ).
+-spec schema(sock(), timeout()) -> datum:either( val() ).
 
 schema(Sock) ->
-   req(Sock, schema, ?TIMEOUT).
+   schema(Sock, ?TIMEOUT).
+
+schema(Sock, Timeout) ->
+   req(Sock, schema, Timeout).
+
 
 %%
 %% deploy index schema
--spec schema(sock(), val()) -> datum:either( key() ).
--spec schema(sock(), val(), timeout()) -> datum:either( key() ).
+-spec create_schema(sock(), val()) -> datum:either( key() ).
+-spec create_schema(sock(), val(), timeout()) -> datum:either( key() ).
 
-schema(Sock, Json) ->
-   schema(Sock, Json, ?TIMEOUT).
+create_schema(Sock, Json) ->
+   create_schema(Sock, Json, ?TIMEOUT).
 
-schema(Sock, Json, Timeout) ->
+create_schema(Sock, Json, Timeout) ->
    req(Sock, {schema, Json}, Timeout).
 
 

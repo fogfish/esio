@@ -10,7 +10,7 @@ See [http example here](https://www.elastic.co/guide/en/elasticsearch/reference/
 
 ```erlang
 {ok, Sock} = esio:socket("http://127.0.0.1:9200/twitter").
-esio:schema(Sock, 
+esio:create_schema(Sock, 
    #{
       settings => #{
          number_of_shards   => 3,
@@ -41,7 +41,6 @@ esio:put(Sock,
    }
 ).
 ```
-
 
 ## put value
 

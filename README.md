@@ -12,7 +12,7 @@ Albeit the "Zalando" mention, this repository is not affiliated with Zalando SE.
 ## Key features
 
 Unlike other, similar projects, *esio* does not aim to provide a generic HTTP-proxy approach, but instead: 
-* uses an **strict identity** schema to resolve naming crises and the hierarchical nature of Elastic Search indexes (index/type/key notation)
+* uses an **strict identity** schema to resolve naming crises and the hierarchical nature of Elastic Search indexes (index/_doc/key notation)
 * offers **query templates** to counter the complexity of DSL 
 * provides Erlang-friendly **pattern matching** for document lookup
 * uses actor models for real-time **data streaming**
@@ -66,7 +66,7 @@ esio:start().
 
 %%
 %% create a new index with name `z`
-esio:schema(Sock, #{settings => #{number_of_shards => 3, number_of_replicas => 1}}).
+esio:create_schema(Sock, #{settings => #{number_of_shards => 3, number_of_replicas => 1}}).
 
 %%
 %% append a new property to existed index
@@ -113,7 +113,6 @@ cd esio
 make
 make run
 ```
-
 
 ### commit message
 
