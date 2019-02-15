@@ -1,5 +1,10 @@
-script: make
 language: erlang
+dist: trusty
+
+script: 
+   - make
+   - ./rebar3 coveralls send
+
 otp_release:
    - 21.2
    - 20.3

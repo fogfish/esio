@@ -4,7 +4,7 @@
 
 [![Changelog](https://img.shields.io/badge/changelog-latest-green.svg)](CHANGELOG.md) 
 [![Build Status](https://secure.travis-ci.org/fogfish/esio.svg?branch=master)](http://travis-ci.org/fogfish/esio)
-[![Coverage Status](https://coveralls.io/repos/github/fogfish/esio/badge.svg?branch=master)](https://coveralls.io/github/fogfish/datum?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/fogfish/esio/badge.svg?branch=master)](https://coveralls.io/github/fogfish/esio?branch=master)
 
 Albeit the "Zalando" mention, this repository is not affiliated with Zalando SE. **esio** was indeed born at Zalando, and Zalando AB holds copyright for parts of the code, but it is now being maintained outside the company, by its original authors and new contributors.
 
