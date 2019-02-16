@@ -2,7 +2,6 @@
 
 **esio** is Erlang client for [Elasticsearch](https://www.elastic.co/products/elasticsearch), which offers a sophisticated [RESTful API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs.html). It implements a data access layer for Erlang applications and makes data and objects semantic-friendly with Erlang.
 
-[![Changelog](https://img.shields.io/badge/changelog-latest-green.svg)](CHANGELOG.md) 
 [![Build Status](https://secure.travis-ci.org/fogfish/esio.svg?branch=master)](http://travis-ci.org/fogfish/esio)
 [![Coverage Status](https://coveralls.io/repos/github/fogfish/esio/badge.svg?branch=master)](https://coveralls.io/github/fogfish/esio?branch=master)
 
