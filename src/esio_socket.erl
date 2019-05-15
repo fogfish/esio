@@ -154,12 +154,7 @@ handle({lookup, Bucket, Query}, Pipe, #{uri := Uri} = State) ->
          cacheable(_, Query, State),
          ack(Pipe, _)
       ]
-   };
-
-handle({http, _, passive}, Pipe, State) ->
-   pipe:a(Pipe, {active, 1024}),
-   {next_state, handle, State}.
-
+   }.
 
 %%%----------------------------------------------------------------------------   
 %%%

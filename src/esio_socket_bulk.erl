@@ -68,11 +68,7 @@ handle(sync, _, State) ->
          http(_),
          timeout(_)
       ]
-   };
-
-handle({http, _, passive}, Pipe, State) ->
-   pipe:a(Pipe, {active, 1024}),
-   {next_state, handle, State}.
+   }.
 
 %%%----------------------------------------------------------------------------   
 %%%
