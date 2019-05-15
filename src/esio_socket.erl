@@ -33,7 +33,7 @@ start_link(Uri, Opts) ->
 
 init([Uri, Opts]) ->
    Cache = opts:val(cache, undefined, Opts),
-   [_ | State] = http( elastic_ping(Uri, maps:from_list(Opts)) ),
+   [_ | State] = http( elastic_ping(Uri, Opts) ),
    {ok, handle, State#{uri => Uri, cache => Cache}}.
 
 free(_, _) ->
@@ -154,12 +154,7 @@ handle({lookup, Bucket, Query}, Pipe, #{uri := Uri} = State) ->
          cacheable(_, Query, State),
          ack(Pipe, _)
       ]
-   };
-
-handle({http, _, passive}, Pipe, State) ->
-   pipe:a(Pipe, {active, 1024}),
-   {next_state, handle, State}.
-
+   }.
 
 %%%----------------------------------------------------------------------------   
 %%%
@@ -170,7 +165,7 @@ handle({http, _, passive}, Pipe, State) ->
 
 %%
 http(Http) ->
-   http(Http, #{}).
+   http(Http, #{so => []}).
 
 http(Http, State0) ->
    [Result | State1] = Http(State0),
@@ -215,7 +210,8 @@ elastic_put(Uri, Json) ->
       cats:new(Uri),
       cats:method('PUT'),
       cats:header('Content-Type', "application/json"),
-      cats:header('Transfer-Encoding', "chunked"),
+      % Note: feature is not supported by http stack
+      % cats:header('Transfer-Encoding', "chunked"),
       cats:header('Connection', "keep-alive"),
       cats:payload(Json),
       cats:request(60000),
@@ -244,7 +240,8 @@ elastic_add(Uri, Json) ->
       cats:new(Uri),
       cats:method('POST'),
       cats:header('Content-Type', "application/json"),
-      cats:header('Transfer-Encoding', "chunked"),
+      % Note: feature is not supported by http stack
+      % cats:header('Transfer-Encoding', "chunked"),
       cats:header('Connection', 'keep-alive'),
       cats:payload(Json),
       cats:request(60000),
@@ -299,7 +296,8 @@ elastic_update(Uri, Json) ->
       cats:new(Uri),
       cats:method('POST'),
       cats:header('Content-Type', "application/json"),
-      cats:header('Transfer-Encoding', "chunked"),
+      % Note: feature is not supported by http stack
+      % cats:header('Transfer-Encoding', "chunked"),
       cats:header('Connection', "keep-alive"),
       cats:payload(#{doc => Json, doc_as_upsert => true}),
       cats:request(60000),
@@ -313,7 +311,8 @@ elastic_lookup(Uri, Query) ->
       cats:new(Uri),
       cats:method('POST'),
       cats:header('Content-Type', "application/json"),
-      cats:header('Transfer-Encoding', "chunked"),
+      % Note: feature is not supported by http stack
+      % cats:header('Transfer-Encoding', "chunked"),
       cats:header('Connection', 'keep-alive'),
       cats:payload(Query),
       cats:request(60000),

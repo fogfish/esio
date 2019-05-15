@@ -68,11 +68,7 @@ handle(sync, _, State) ->
          http(_),
          timeout(_)
       ]
-   };
-
-handle({http, _, passive}, Pipe, State) ->
-   pipe:a(Pipe, {active, 1024}),
-   {next_state, handle, State}.
+   }.
 
 %%%----------------------------------------------------------------------------   
 %%%
@@ -115,8 +111,8 @@ elastic_ping(Uri, Opts) ->
       cats:so(Opts),
       cats:method('GET'),
       cats:header('Connection', 'keep-alive'),
-      cats:request(60000),
-      cats:require(code, 200)
+      [{200, _, _} | _] <- cats:request(60000),
+      cats:unit( 200 )
    ].
 
 %%
@@ -133,7 +129,8 @@ elastic_bulk_req(#{chunk := Chunk, uri := Uri}) ->
       cats:new( uri:path(<<"/_bulk">>, Uri) ),
       cats:method('POST'),
       cats:header('Content-Type', "application/x-ndjson"),
-      cats:header('Transfer-Encoding', "chunked"),
+      % Note: feature is not supported by http stack
+      % cats:header('Transfer-Encoding', "chunked"),
       cats:header('Connection', 'keep-alive'),
       cats:payload( encode(bucket(Uri), Chunk) ),
       cats:request(60000),

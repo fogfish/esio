@@ -69,7 +69,7 @@ esio:create_schema(Sock, #{settings => #{number_of_shards => 3, number_of_replic
 
 %%
 %% append a new property to existed index
-esio:schema(Sock, #{properties => #{x => #{type => keyword}}}).
+esio:create_schema(Sock, #{properties => #{x => #{type => keyword}}}).
 
 %%
 %% put documents to your index

@@ -5,14 +5,14 @@
       {modules,     []},
       {registered,  [
          esio_sup
-        ,esio_socket_sup
-        ,esio_socket_bulk_sup
+      ,  esio_socket_sup
+      ,  esio_socket_bulk_sup
       ]},
       {applications,[
          kernel
-        ,stdlib
-        ,knet
-        ,jsx
+      ,  stdlib
+      ,  m_http
+      ,  jsx
       ]},
       {mod, {esio_app, []}},
       {env, []}

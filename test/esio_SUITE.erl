@@ -12,11 +12,8 @@
 %% common test
 -export([
    all/0,
-   groups/0,
    init_per_suite/1,
    end_per_suite/1,
-   init_per_group/2,
-   end_per_group/2,
    init_per_testcase/2,
    end_per_testcase/2
 ]).
@@ -54,18 +51,11 @@
 %%%
 %%%----------------------------------------------------------------------------   
 all() ->
-   [
-      {group, interface}
-   ].
-
-groups() ->
-   [
-      {interface, [], 
-         [socket, schema, put_call, put_cast, put_send, add_call, add_cast, add_send, 
-         get_call, get_cast, get_send, remove_call, remove_cast, remove_send, 
-         update_call, update_cast, update_send, 
-         lookup_call, lookup_cast, lookup_send, stream, match,
-         bulk, bulk_sync, bulk_timeout]}
+   [Test || {Test, NAry} <- ?MODULE:module_info(exports), 
+      Test =/= module_info,
+      Test =/= init_per_suite,
+      Test =/= end_per_suite,
+      NAry =:= 1
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -79,14 +69,6 @@ init_per_suite(Config) ->
 
 end_per_suite(_Config) ->
    application:stop(esio),
-   ok.
-
-%% 
-%%
-init_per_group(_, Config) ->
-   Config.
-
-end_per_group(_, _Config) ->
    ok.
 
 %%
@@ -415,7 +397,7 @@ elastic_mock(Response) ->
 elastic_stream(Response) ->
    fun(_) ->
       fun(#{req := [{_, Uri, _} | Json]} = State) -> 
-         Http = case uri:path(Uri) of
+         Http = case path(Uri) of
             <<"/_cat/nodes">> ->
                esio_FIXTURE:http(200, esio_FIXTURE:elastic_nodes());
             _ ->
@@ -430,4 +412,5 @@ elastic_stream(Response) ->
       end
    end.
 
-
+path({uri, _, _} = Uri) -> uri:path(Uri);
+path(Uri) -> path(uri:new(Uri)).
