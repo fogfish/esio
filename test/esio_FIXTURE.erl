@@ -30,7 +30,7 @@ m_http(Http)
 m_http(Http)
  when is_map(Http) ->
    fun(#{req := [{_, Uri, _} | _]} = State) ->
-      Path = uri:path(Uri),
+      Path = path(Uri),
       case Http of
          #{Path := Route} -> 
             [Route | State#{ret => Route}];
@@ -38,6 +38,9 @@ m_http(Http)
             [Route | State#{ret => Route}]
       end
    end.
+
+path({uri, _, _} = Uri) -> uri:path(Uri);
+path(Uri) -> path(uri:new(Uri)).
 
 %%
 %%

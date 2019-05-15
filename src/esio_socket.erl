@@ -170,7 +170,7 @@ handle({http, _, passive}, Pipe, State) ->
 
 %%
 http(Http) ->
-   http(Http, #{}).
+   http(Http, #{so => []}).
 
 http(Http, State0) ->
    [Result | State1] = Http(State0),
@@ -199,10 +199,9 @@ ack(Pipe, [Result | State]) ->
 
 
 %%
-elastic_ping(Uri, Opts) ->
+elastic_ping(Uri, _Opts) ->
    [m_http ||
       cats:new(uri:path(<<"/_cat/nodes">>, Uri)),
-      cats:so(Opts),
       cats:method('GET'),
       cats:header('Connection', 'keep-alive'),
       cats:request(60000)
@@ -215,7 +214,8 @@ elastic_put(Uri, Json) ->
       cats:new(Uri),
       cats:method('PUT'),
       cats:header('Content-Type', "application/json"),
-      cats:header('Transfer-Encoding', "chunked"),
+      % Note: feature is not supported by http stack
+      % cats:header('Transfer-Encoding', "chunked"),
       cats:header('Connection', "keep-alive"),
       cats:payload(Json),
       cats:request(60000),
@@ -244,7 +244,8 @@ elastic_add(Uri, Json) ->
       cats:new(Uri),
       cats:method('POST'),
       cats:header('Content-Type', "application/json"),
-      cats:header('Transfer-Encoding', "chunked"),
+      % Note: feature is not supported by http stack
+      % cats:header('Transfer-Encoding', "chunked"),
       cats:header('Connection', 'keep-alive'),
       cats:payload(Json),
       cats:request(60000),
@@ -299,7 +300,8 @@ elastic_update(Uri, Json) ->
       cats:new(Uri),
       cats:method('POST'),
       cats:header('Content-Type', "application/json"),
-      cats:header('Transfer-Encoding', "chunked"),
+      % Note: feature is not supported by http stack
+      % cats:header('Transfer-Encoding', "chunked"),
       cats:header('Connection', "keep-alive"),
       cats:payload(#{doc => Json, doc_as_upsert => true}),
       cats:request(60000),
@@ -313,7 +315,8 @@ elastic_lookup(Uri, Query) ->
       cats:new(Uri),
       cats:method('POST'),
       cats:header('Content-Type', "application/json"),
-      cats:header('Transfer-Encoding', "chunked"),
+      % Note: feature is not supported by http stack
+      % cats:header('Transfer-Encoding', "chunked"),
       cats:header('Connection', 'keep-alive'),
       cats:payload(Query),
       cats:request(60000),
