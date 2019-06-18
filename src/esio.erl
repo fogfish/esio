@@ -12,6 +12,8 @@
 -export([start/0]).
 %% socket interface
 -export([
+   start_link/1,
+   start_link/2,
    socket/1,
    socket/2,
    close/1,
@@ -96,6 +98,22 @@ socket(Uri, Opts) ->
          supervisor:start_child(esio_socket_bulk_sup, [uri:new(Uri), Opts]);
       bulk  ->
          supervisor:start_child(esio_socket_bulk_sup, [uri:new(Uri), Opts])
+   end.
+
+-spec start_link(url()) -> datum:either( sock() ).
+-spec start_link(url(), [_]) -> datum:either( sock() ).
+
+start_link(Uri) ->
+   start_link(Uri, []).
+
+start_link(Uri, Opts) ->
+   case opts:val(bulk, false, Opts) of
+      false ->
+         esio_socket:start_link(uri:new(Uri), Opts);
+      true  ->
+         esio_socket_bulk:start_link(uri:new(Uri), Opts);
+      bulk  ->
+         esio_socket_bulk:start_link(uri:new(Uri), Opts)
    end.
 
 %%
