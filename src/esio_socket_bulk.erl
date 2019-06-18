@@ -16,6 +16,7 @@
 
 -export([
    start_link/2,
+   start_link/3,
    init/1,
    free/2,
    handle/3
@@ -28,7 +29,10 @@
 %%-----------------------------------------------------------------------------
 
 start_link(Uri, Opts) ->
-   pipe:start_link(?MODULE, [Uri, Opts], []).   
+   pipe:start_link(?MODULE, [Uri, Opts], []).
+
+start_link(Name, Uri, Opts) ->
+   pipe:start_link(Name, ?MODULE, [Uri, Opts], []).
 
 init([Uri, Opts]) ->
    [200 | State] = http( elastic_ping(Uri, maps:without([n, t], maps:from_list(Opts -- [bulk]))) ),
