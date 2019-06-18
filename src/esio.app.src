@@ -13,6 +13,7 @@
       ,  stdlib
       ,  m_http
       ,  jsx
+      ,  feta
       ]},
       {mod, {esio_app, []}},
       {env, []}
